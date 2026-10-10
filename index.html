@@ -18,6 +18,21 @@
       font-family: Comic Sans MS, Comic Sans, cursive, Arial, sans-serif;
     }
 
+    #game-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #game-container canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
     .game-menu {
       position: fixed;
       inset: 0;
@@ -320,6 +335,7 @@
 </head>
 
 <body>
+  <div id="game-container"></div>
 
   <div id="start-menu" class="game-menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
     <div class="menu-card">
@@ -408,10 +424,13 @@
     const LETTER_MIN_X = 200;
     const LEVEL_WIDTH = 2000;
     const displayScale = Math.min(window.innerWidth / GAME_WIDTH, window.innerHeight / GAME_HEIGHT);
-    const RENDER_SCALE = Math.max(1, Math.min(3, Math.ceil(Math.max(window.devicePixelRatio || 1, displayScale))));
+    // TV/console browsers have limited GPU memory; cap the canvas at 2x there.
+    const MAX_RENDER_SCALE = /Xbox|PlayStation|Tizen|WebOS|SMART-TV/i.test(navigator.userAgent) ? 2 : 3;
+    const RENDER_SCALE = Math.max(1, Math.min(MAX_RENDER_SCALE, Math.ceil(Math.max(window.devicePixelRatio || 1, displayScale))));
 
     const config = {
       type: Phaser.AUTO,
+      parent: 'game-container',
       width: GAME_WIDTH * RENDER_SCALE,
       height: GAME_HEIGHT * RENDER_SCALE,
       render: {
@@ -439,6 +458,10 @@
     };
 
     const game = new Phaser.Game(config);
+    // TV browsers can report their size late; re-fit the canvas once layout settles.
+    const refreshScale = () => { if (game.canvas) game.scale.refresh(); };
+    window.addEventListener('load', () => setTimeout(refreshScale, 300));
+    window.addEventListener('resize', refreshScale);
 
     // Block browser-level gamepad/keyboard navigation (B = back, etc.) so only the game reacts.
     const blockedKeys = new Set([
