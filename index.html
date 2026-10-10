@@ -1,0 +1,1705 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lilian's Great Adventure</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Comic Sans MS, Comic Sans, cursive, Arial, sans-serif;
+    }
+
+    .game-menu {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      box-sizing: border-box;
+      color: #25434a;
+      background: linear-gradient(135deg, rgba(83, 196, 194, 0.74), rgba(247, 176, 157, 0.72));
+      backdrop-filter: blur(6px);
+    }
+
+    .game-menu[hidden] {
+      display: none;
+    }
+
+    .game-hud {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 5;
+      display: grid;
+      gap: 6px;
+      width: min(460px, calc(50vw - 21px));
+      min-height: 112px;
+      box-sizing: border-box;
+      align-content: center;
+      padding: 9px 11px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 10px;
+      color: #fff;
+      background: rgba(18, 45, 61, 0.78);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .game-hud[hidden] {
+      display: none;
+    }
+
+    .challenge-hud {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: min(460px, calc(50vw - 21px));
+      min-height: 112px;
+      padding: 9px 14px;
+      box-sizing: border-box;
+      border: 2px solid #8bd8d1;
+      border-radius: 22px;
+      color: #25434a;
+      background: rgba(255, 249, 241, 0.97);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+      text-align: left;
+      font-size: clamp(14px, 1.8vw, 18px);
+      font-weight: 600;
+      pointer-events: none;
+    }
+
+    .challenge-hud[hidden] {
+      display: none;
+    }
+
+    .challenge-avatar {
+      flex: none;
+      width: 72px;
+      height: 72px;
+      border-radius: 14px;
+      object-fit: cover;
+      background: #d9f4ee;
+    }
+
+    .challenge-text {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .challenge-hud small {
+      display: block;
+      color: #64777a;
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    .hud-hearts {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      min-height: 22px;
+    }
+
+    .hud-hearts img {
+      width: 21px;
+      height: 21px;
+      object-fit: contain;
+      image-rendering: auto;
+    }
+
+    .menu-card {
+      width: min(100%, 860px);
+      padding: 30px 36px 24px;
+      box-sizing: border-box;
+      border: 2px solid #8bd8d1;
+      border-radius: 20px;
+      background: rgba(255, 249, 241, 0.97);
+      box-shadow: 0 28px 80px rgba(40, 75, 79, 0.35);
+      text-align: center;
+    }
+
+    .menu-card h1 {
+      margin: 0 0 4px;
+      color: #236c73;
+      font-size: clamp(28px, 6vw, 42px);
+    }
+
+    .menu-card p {
+      margin: 0;
+      color: #64777a;
+      margin-bottom: 4px;
+    }
+
+    .menu-content {
+      display: grid;
+      grid-template-columns: minmax(250px, 1fr) minmax(250px, 0.9fr);
+      gap: clamp(24px, 5vw, 56px);
+      align-items: center;
+      padding: 24px 0 18px;
+    }
+
+    .mode-button:focus-visible,
+    .restart-button:focus-visible,
+    .game-menu button:focus {
+      outline: 4px solid #6bbfb5;
+      outline-offset: 3px;
+    }
+
+    .mode-button,
+    .restart-button {
+      min-height: 62px;
+      width: 100%;
+      padding: 10px 16px;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      color: #24575d;
+      background: #d9f4ee;
+      font: inherit;
+      cursor: pointer;
+      text-align: left;
+      transition: transform 150ms ease, background 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+    }
+
+    .mode-button:hover {
+      transform: translateX(3px);
+      background: #c9eee6;
+    }
+
+    .mode-button[aria-pressed="true"] {
+      border-color: #238f91;
+      color: #174f55;
+      background: #bcebe2;
+      box-shadow: 0 8px 20px rgba(46, 142, 145, 0.18);
+    }
+
+    .restart-button:hover {
+      transform: translateY(-3px);
+      background: #bcebe2;
+      box-shadow: 0 8px 20px rgba(46, 142, 145, 0.18);
+    }
+
+    .mode-button strong {
+      font-size: 20px;
+    }
+
+    .mode-button span {
+      float: right;
+      color: #627a7d;
+      font-size: 14px;
+    }
+
+    .mode-options {
+      display: grid;
+      gap: 10px;
+    }
+
+    .mode-preview {
+      min-height: 255px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      border: 1px solid #b4e5de;
+      border-radius: 16px;
+      background: linear-gradient(145deg, #e2f7f1, #ffede3);
+      text-align: center;
+    }
+
+    .mode-preview img {
+      width: auto;
+      height: 150px;
+      max-width: 100%;
+      object-fit: contain;
+      image-rendering: auto;
+      filter: drop-shadow(0 10px 12px rgba(35, 108, 115, 0.2));
+    }
+
+    .mode-preview h2 {
+      margin: 8px 0 2px;
+      color: #236c73;
+      font-size: 22px;
+    }
+
+    .mode-preview p {
+      min-height: 20px;
+      font-size: 13px;
+    }
+
+    .menu-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #d8ebe5;
+      color: #64777a;
+      font-size: 13px;
+    }
+
+    .restart-button {
+      min-height: 48px;
+      width: auto;
+      padding: 0 28px;
+      border-color: #238f91;
+      color: #fff;
+      background: #38aaa7;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .restart-button:hover {
+      background: #268f90;
+    }
+
+    .restart-button:disabled {
+      border-color: #a9c9c4;
+      background: #a9c9c4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    @media (max-width: 620px) {
+      .game-menu {
+        overflow-y: auto;
+      }
+
+      .menu-card {
+        padding: 24px 20px 18px;
+      }
+
+      .menu-content {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 18px 0;
+      }
+
+      .mode-preview {
+        min-height: 190px;
+        grid-row: 1;
+      }
+
+      .mode-preview img {
+        height: 92px;
+      }
+
+      .menu-footer {
+        align-items: stretch;
+        flex-direction: column;
+      }
+    }
+
+    canvas {
+      display: block;
+      image-rendering: auto;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    }
+  </style>
+  <!-- Load Phaser 3 from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+
+<body>
+
+  <div id="start-menu" class="game-menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
+    <div class="menu-card">
+      <h1 id="menu-title">Lilian's Great Adventure</h1>
+      <p>Choose your challenge.</p>
+      <div class="menu-content">
+        <div class="mode-options" role="group" aria-label="Difficulty">
+          <button class="mode-button" data-mode="Easy" data-lives="8" data-image="assets/baby/easy.png"
+            data-description="A gentler crawl for new adventurers." aria-pressed="false">
+            <strong>Easy</strong><span>8 lives</span>
+          </button>
+          <button class="mode-button" data-mode="Medium" data-lives="5" data-image="assets/baby/medium.png"
+            data-description="A balanced challenge for the average crawler." aria-pressed="false">
+            <strong>Medium</strong><span>5 lives</span>
+          </button>
+          <button class="mode-button" data-mode="Hard" data-lives="3" data-image="assets/baby/hard.png"
+            data-description="A tough test for seasoned crawlers." aria-pressed="false">
+            <strong>Hard</strong><span>3 lives</span>
+          </button>
+        </div>
+        <div class="mode-preview" aria-live="polite">
+          <img id="mode-image" src="assets/baby/easy.png" alt="Baby character">
+          <h2 id="mode-preview-title">Choose a difficulty</h2>
+          <p id="mode-description">Select Easy, Medium, or Hard to preview your challenge.</p>
+        </div>
+      </div>
+      <div class="menu-footer">
+        <span id="mode-footer-description">No difficulty selected</span>
+        <button id="start-game-button" class="restart-button" disabled>Start Game</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="game-over-menu" class="game-menu" role="dialog" aria-modal="true" aria-labelledby="game-over-title" hidden>
+    <div class="menu-card">
+      <h1 id="game-over-title">GAME OVER</h1>
+      <div class="menu-content">
+        <div class="game-over-copy">
+          <p>You ran out of lives.</p>
+          <p>Choose a difficulty and try the adventure again.</p>
+          <button id="restart-button" class="restart-button">Return to level selection</button>
+        </div>
+        <div class="mode-preview game-over-preview">
+          <img src="assets/baby/game_over.png" alt="Crying baby after game over">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="level-success-menu" class="game-menu" role="dialog" aria-modal="true" aria-labelledby="level-success-title"
+    hidden>
+    <div class="menu-card">
+      <h1 id="level-success-title">LEVEL COMPLETE!</h1>
+      <div class="menu-content">
+        <div class="game-over-copy">
+          <p id="level-success-message">Challenge complete!</p>
+          <p id="level-success-score">Score: 0</p>
+          <button id="next-level-button" class="restart-button">Next Level</button>
+        </div>
+        <div class="mode-preview game-over-preview">
+          <img src="assets/baby/success.png" alt="Level completed successfully">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="game-hud" class="game-hud" aria-live="polite" hidden>
+    <div>Arrow Keys: Move &amp; Jump | SPACE: Throw | Xbox: Stick/D-pad, A Jump, RT Throw</div>
+    <div id="hud-bottles">Bottles: 0 | Throws: 0</div>
+    <div id="hud-score">Score: 0 | Best: 0</div>
+    <div id="hud-level">Level 1</div>
+    <div id="hud-hearts" class="hud-hearts" aria-label="Health"></div>
+  </div>
+  <div id="challenge-hud" class="challenge-hud" aria-live="polite" hidden>
+    <img id="challenge-avatar" class="challenge-avatar" src="assets/baby/casper.png" alt="">
+    <div class="challenge-text">
+      <span id="challenge-prompt"></span>
+      <small id="challenge-progress"></small>
+    </div>
+  </div>
+
+  <script>
+    const GAME_WIDTH = 1000;
+    const GAME_HEIGHT = 450;
+    // Starting bottles span x 42-190 around the player spawn; keep letters past them.
+    const LETTER_MIN_X = 200;
+    const LEVEL_WIDTH = 2000;
+    const displayScale = Math.min(window.innerWidth / GAME_WIDTH, window.innerHeight / GAME_HEIGHT);
+    const RENDER_SCALE = Math.max(1, Math.min(3, Math.ceil(Math.max(window.devicePixelRatio || 1, displayScale))));
+
+    const config = {
+      type: Phaser.AUTO,
+      width: GAME_WIDTH * RENDER_SCALE,
+      height: GAME_HEIGHT * RENDER_SCALE,
+      render: {
+        antialias: true,
+        pixelArt: false,
+        roundPixels: false
+      },
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+      },
+      physics: {
+        default: 'arcade',
+        arcade: {
+          gravity: { y: 900 },
+          debug: false // Set to true to see collision boxes
+        }
+      },
+      scene: {
+        preload: preload,
+        init: init,
+        create: create,
+        update: update
+      }
+    };
+
+    const game = new Phaser.Game(config);
+
+    // Block browser-level gamepad/keyboard navigation (B = back, etc.) so only the game reacts.
+    const blockedKeys = new Set([
+      'GamepadB', 'GamepadX', 'GamepadY', 'GamepadView', 'GamepadMenu',
+      'GamepadLeftShoulder', 'GamepadRightShoulder', 'GamepadLeftTrigger', 'GamepadRightTrigger',
+      'BrowserBack', 'BrowserForward', 'Escape', 'Backspace', 'ContextMenu'
+    ]);
+    ['keydown', 'keyup'].forEach(type => {
+      window.addEventListener(type, event => {
+        if (blockedKeys.has(event.key) || blockedKeys.has(event.code)) event.preventDefault();
+      }, true);
+    });
+    window.addEventListener('contextmenu', event => event.preventDefault());
+    // Trap history so a Back action (B on some browsers) cannot leave the game.
+    history.pushState(null, '', location.href);
+    window.addEventListener('popstate', () => history.pushState(null, '', location.href));
+
+    // --- Xbox / standard gamepad support ---
+    // A = jump (and confirm in menus), RT = throw, left stick / D-pad = move (and navigate menus).
+    const pad = { x: 0, aJust: false, rtJust: false, navX: 0, navY: 0, navJust: false };
+    const padPrev = { a: false, rt: false, navKey: '' };
+
+    function pollGamepad() {
+      const gamepad = Array.from(navigator.getGamepads?.() || []).find(p => p && p.connected);
+      let x = 0, y = 0, a = false, rt = false;
+      if (gamepad) {
+        const b = index => gamepad.buttons[index];
+        x = gamepad.axes[0] || 0;
+        y = gamepad.axes[1] || 0;
+        if (Math.abs(x) < 0.3) x = 0;
+        if (Math.abs(y) < 0.5) y = 0;
+        if (b(14)?.pressed) x = -1;
+        if (b(15)?.pressed) x = 1;
+        if (b(12)?.pressed) y = -1;
+        if (b(13)?.pressed) y = 1;
+        a = Boolean(b(0)?.pressed);
+        rt = Boolean(b(7)?.pressed || (b(7)?.value || 0) > 0.5);
+      }
+      pad.x = x;
+      if (a && !padPrev.a) pad.aJust = true;
+      if (rt && !padPrev.rt) pad.rtJust = true;
+      padPrev.a = a;
+      padPrev.rt = rt;
+      const navX = Math.sign(x), navY = Math.sign(y);
+      const navKey = `${navX},${navY}`;
+      pad.navJust = (navX || navY) && navKey !== padPrev.navKey;
+      pad.navX = navX;
+      pad.navY = navY;
+      padPrev.navKey = navKey;
+    }
+
+    function updateGamepadMenus() {
+      pollGamepad();
+      const menu = Array.from(document.querySelectorAll('.game-menu')).find(m => !m.hidden);
+      if (menu) {
+        const buttons = Array.from(menu.querySelectorAll('button')).filter(btn => !btn.disabled && btn.offsetParent !== null);
+        if (buttons.length) {
+          // Auto-focus the first button whenever a menu appears so A works immediately.
+          if (!buttons.includes(document.activeElement)) buttons[0].focus();
+          const current = buttons.indexOf(document.activeElement);
+          if (pad.navJust) {
+            const step = pad.navX + pad.navY > 0 ? 1 : -1;
+            const next = current < 0 ? 0 : (current + step + buttons.length) % buttons.length;
+            buttons[next].focus();
+          }
+          if (pad.aJust) {
+            const target = current >= 0 ? buttons[current] : buttons[0];
+            target.focus();
+            target.click();
+          }
+        }
+        pad.aJust = false;
+        pad.rtJust = false;
+      }
+      requestAnimationFrame(updateGamepadMenus);
+    }
+    requestAnimationFrame(updateGamepadMenus);
+
+    let player;
+    let cursors;
+    let canDoubleJump = false;
+    let isJumping = false;
+    let bobGoblin;
+    let bobHud;
+    let goblinDirection = 1;
+    let ttc;
+    let ttcHud;
+    let ttcDirection = 1;
+    let sushi;
+    let sushiHud;
+    let sushiDirection = 1;
+    let levelAdversaries = [];
+    let generatedPlatforms = [];
+    let playerKnockbackActive = false;
+    let playerLives = 0;
+    let playerMaxLives = 0;
+    let selectedMode = '';
+    let bottlePickups;
+    let heartPickups;
+    let bottleCount = 0;
+    let bottleCountText;
+    let livesIcons = [];
+    let poopProjectiles;
+    let projectileSound;
+    let introSound;
+    let backgroundMusic;
+    let collectSound;
+    let jumpSound;
+    let jumpHitSound;
+    let pendingMenuAudioKey = null;
+    let modeAudioUnlockListenerRegistered = false;
+    let nextProjectileId = 1;
+    let levelNumber = 1;
+    let score = 0;
+    let highestScore = Number(localStorage.getItem('lilianHighScore') || 0);
+    let activeScene = null;
+    let chosenModeButton = null;
+    let menuHandlersBound = false;
+    let challengeState = null;
+    let challengeLetterLabels = [];
+    let bottleRespawns = [];
+    let timedEffects = [];
+    let hudScoreText;
+    let hudLevelText;
+    let challengePromptElement;
+    let challengeProgressElement;
+    let usedChallengeKeys = new Set();
+
+    function init(data = {}) {
+      this.isNextLevelRun = Boolean(data.nextLevel);
+      if (this.isNextLevelRun && Number.isInteger(data.levelNumber)) levelNumber = data.levelNumber;
+    }
+
+    function preload() {
+      // --- LOAD EXTERNAL PNG ASSETS ---
+      this.load.image('baby_idle', 'assets/baby/baby_idle.png?v=2');
+      this.load.image('baby_run', 'assets/baby/baby_run.png');
+      this.load.image('baby_jump', 'assets/baby/baby_jump.png');
+      this.load.image('baby_flutter', 'assets/baby/baby_flutter.png');
+      this.load.image('hp_full', 'assets/baby/hp.png');
+      this.load.image('hp_empty', 'assets/baby/hp_empty.png');
+      this.load.image('goblin', 'assets/goblin/goblin.png');
+      this.load.image('ttc', 'assets/ttc/ttc.png');
+      this.load.image('sushi', 'assets/sushi/sushi.png');
+      this.load.image('bottle', 'assets/collectables/bottle.png');
+      this.load.image('heart_pickup', 'assets/baby/hp.png');
+      this.load.image('platform_block', 'assets/block.png');
+      this.load.image('projectile', 'assets/projectile/projectile.png');
+      this.load.image('explosion', 'assets/explosion.png');
+      this.load.image('background', 'assets/background.png');
+      this.load.audio('projectile_sfx', 'assets/projectile/projectile.mp3');
+      this.load.audio('intro_sfx', 'assets/intro.mp3');
+      this.load.audio('background_music', 'assets/background.mp3');
+      this.load.audio('background_music_hard', 'assets/background-hard.mp3');
+      this.load.audio('success_sfx', 'assets/success.mp3');
+      this.load.audio('collect_sfx', 'assets/collectables/collect.mp3');
+      this.load.audio('jump_sfx', 'assets/baby/baby_jump.mp3');
+      this.load.audio('baby_hit_sfx', 'assets/baby/baby_hit.mp3');
+      this.load.audio('jump_hit_sfx', 'assets/baby/baby_jump_hit.mp3');
+      this.load.audio('easy_mode_sfx', 'assets/baby/easy.mp3');
+      this.load.audio('medium_mode_sfx', 'assets/baby/medium.mp3');
+      this.load.audio('hard_mode_sfx', 'assets/baby/hard.mp3');
+      this.load.audio('game_over_sfx', 'assets/baby/game_over.mp3');
+    }
+
+    function create() {
+      activeScene = this;
+      if (!this.isNextLevelRun) bottleCount = 0;
+      canDoubleJump = false;
+      isJumping = false;
+      playerKnockbackActive = false;
+      levelAdversaries = [];
+      generatedPlatforms = [];
+      challengeState = null;
+      challengeLetterLabels = [];
+      bottleRespawns = [];
+      timedEffects = [];
+      if (!this.isNextLevelRun) {
+        levelNumber = 1;
+        score = 0;
+        playerLives = 0;
+        selectedMode = '';
+        usedChallengeKeys.clear();
+      }
+
+      this.cameras.main.setZoom(RENDER_SCALE).centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+      this.cameras.main.setBounds(0, 0, LEVEL_WIDTH, GAME_HEIGHT);
+      this.cameras.main.setRoundPixels(false);
+      this.physics.world.setBounds(0, 0, LEVEL_WIDTH, GAME_HEIGHT);
+      this.textures.get('baby_idle').setFilter(Phaser.Textures.FilterMode.LINEAR);
+
+      // 1. Background artwork spans the full level; camera shows 1000 units at a time.
+      this.add.rectangle(LEVEL_WIDTH / 2, GAME_HEIGHT / 2, LEVEL_WIDTH, GAME_HEIGHT, 0x3b82f6).setDepth(-2);
+      this.add.image(LEVEL_WIDTH / 2, GAME_HEIGHT / 2, 'background')
+        .setDisplaySize(LEVEL_WIDTH, GAME_HEIGHT)
+        .setAlpha(0.75)
+        .setDepth(-1);
+
+      // 2. Platforms (static collision bodies)
+      const floor = this.add.rectangle(LEVEL_WIDTH / 2, 440, LEVEL_WIDTH, 20, 0x1e3a8a);
+      this.physics.add.existing(floor, true);
+
+      // Raised platforms are made from 30x30 blocks, including the starting platforms.
+      const coffeeTable = createBlockPlatform(this, 300, 330, 7);
+      const couch = createBlockPlatform(this, 600, 265, 8);
+
+      // 3. Player Setup (Using 'baby_idle' texture)
+      // Start position: 100x, 350y
+      player = this.physics.add.sprite(100, 350, 'baby_idle');
+
+      // Preserve the previous 64px height without distorting the higher-res art.
+      const idleFrame = this.textures.getFrame('baby_idle');
+      const playerDisplayHeight = 64;
+      const playerDisplayWidth = playerDisplayHeight * idleFrame.width / idleFrame.height;
+      const playerScaleX = playerDisplayWidth / idleFrame.width;
+      const playerScaleY = playerDisplayHeight / idleFrame.height;
+      player.setDisplaySize(playerDisplayWidth, playerDisplayHeight);
+
+      player.setCollideWorldBounds(true);
+      // Keep the same on-screen collider (24x48) and feet alignment after scaling.
+      player.body.setSize(24 / playerScaleX, 48 / playerScaleY);
+      player.body.setOffset(6 / playerScaleX, 16 / playerScaleY);
+      player.body.updateFromGameObject();
+      player.setCollideWorldBounds(true);
+      this.cameras.main.startFollow(player, true, 0.12, 0.12);
+
+      // 4. Collisions
+      this.physics.add.collider(player, floor);
+      this.physics.add.collider(player, coffeeTable);
+      this.physics.add.collider(player, couch);
+      player.setCollideWorldBounds(true);
+      this.cameras.main.startFollow(player, true, 0.12, 0.12);
+
+      // Starting ammo is available near the spawn. Platform bottles are added
+      // alongside each platform's randomly selected adversary below.
+      bottlePickups = this.physics.add.staticGroup();
+      heartPickups = this.physics.add.staticGroup();
+      const bottleZones = [{ count: 6, minX: 42, maxX: 190, surfaceY: 430 }];
+
+      bottleZones.forEach(({ count, minX, maxX, surfaceY }) => {
+        const spacing = count > 1 ? (maxX - minX) / (count - 1) : 0;
+        const jitter = Math.min(5, spacing * 0.04);
+
+        for (let i = 0; i < count; i += 1) {
+          const size = Phaser.Math.Between(29, 35);
+          const baseX = count > 1 ? minX + spacing * i : (minX + maxX) / 2;
+          const x = Phaser.Math.Clamp(
+            baseX + Phaser.Math.FloatBetween(-jitter, jitter),
+            minX,
+            maxX
+          );
+          createBottlePickup(this, x, surfaceY - Math.floor(16 * Math.random()), size);
+        }
+      });
+      this.physics.add.overlap(player, bottlePickups, collectBottle, null, this);
+      this.physics.add.overlap(player, heartPickups, collectHeart, null, this);
+
+      poopProjectiles = this.physics.add.group({ allowGravity: false });
+      projectileSound ||= this.sound.add('projectile_sfx');
+      introSound ||= this.sound.add('intro_sfx');
+      backgroundMusic ||= this.sound.add('background_music', { loop: true });
+      collectSound ||= this.sound.add('collect_sfx');
+      jumpSound ||= this.sound.add('jump_sfx');
+      this.babyHitSound = this.babyHitSound || this.sound.add('baby_hit_sfx');
+      jumpHitSound ||= this.sound.add('jump_hit_sfx');
+      this.gameOverSound = this.gameOverSound || this.sound.add('game_over_sfx');
+
+      const adversaryTypes = getAdversaryTypes();
+      createPlatformAdversary(this, player, coffeeTable, floor, adversaryTypes);
+      createPlatformAdversary(this, player, couch, floor, adversaryTypes);
+      generateLevelPlatforms(this, player, floor, coffeeTable, couch, adversaryTypes);
+
+      // 5. Controls Setup
+      cursors = this.input.keyboard.createCursorKeys();
+      this.throwKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+      // 6. Screen-fixed HUD (independent of Phaser camera zoom and scrolling).
+      bottleCountText = document.getElementById('hud-bottles');
+      const heartsContainer = document.getElementById('hud-hearts');
+      heartsContainer.replaceChildren();
+      livesIcons = Array.from({ length: 8 }, (_, index) => {
+        const heart = document.createElement('img');
+        heart.src = 'assets/baby/hp_empty.png';
+        heart.alt = `Life ${index + 1}`;
+        heart.hidden = true;
+        heartsContainer.appendChild(heart);
+        return heart;
+      });
+      updateBottleCountText();
+      hudScoreText = document.getElementById('hud-score');
+      hudLevelText = document.getElementById('hud-level');
+      challengePromptElement = document.getElementById('challenge-prompt');
+      challengeProgressElement = document.getElementById('challenge-progress');
+      document.getElementById('challenge-avatar').src =
+        Phaser.Utils.Array.GetRandom(['assets/baby/sam.png', 'assets/baby/casper.png']);
+      updateScoreHud();
+      hudLevelText.textContent = `Level ${levelNumber}`;
+
+      if (!menuHandlersBound) bindMenuHandlers();
+      document.getElementById('game-over-menu').hidden = true;
+      document.getElementById('level-success-menu').hidden = true;
+
+      if (this.isNextLevelRun) {
+        initializeLevelChallenge(this);
+        beginGameplay(this);
+      } else {
+        document.getElementById('game-hud').hidden = true;
+        document.getElementById('challenge-hud').hidden = true;
+        playMenuAudio(this, 'intro_sfx', true);
+        this.physics.world.pause();
+      }
+    }
+
+    function bindMenuHandlers() {
+      if (menuHandlersBound) return;
+      const modeButtons = Array.from(document.querySelectorAll('.mode-button'));
+      modeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          chosenModeButton = button;
+          const audioKey = `${button.dataset.mode.toLowerCase()}_mode_sfx`;
+          playMenuAudio(activeScene, audioKey, false);
+          modeButtons.forEach(option => option.setAttribute('aria-pressed', String(option === button)));
+          document.getElementById('mode-image').src = button.dataset.image;
+          document.getElementById('mode-image').alt = `Baby character for ${button.dataset.mode} difficulty`;
+          document.getElementById('mode-preview-title').textContent = button.dataset.mode;
+          document.getElementById('mode-description').textContent = button.dataset.description;
+          document.getElementById('mode-footer-description').textContent =
+            `${button.dataset.mode} difficulty · ${button.dataset.lives} lives`;
+          document.getElementById('start-game-button').disabled = false;
+        });
+      });
+
+      document.getElementById('start-game-button').addEventListener('click', () => {
+        if (!chosenModeButton || !activeScene) return;
+        startGame(chosenModeButton.dataset.mode, Number(chosenModeButton.dataset.lives), activeScene);
+      });
+      document.getElementById('restart-button').addEventListener('click', () => location.reload());
+      document.getElementById('next-level-button').addEventListener('click', () => {
+        if (!activeScene) return;
+        activeScene.sound.stopByKey('success_sfx');
+        activeScene.scene.restart({ nextLevel: true, levelNumber: levelNumber + 1 });
+      });
+      menuHandlersBound = true;
+    }
+
+    function beginGameplay(scene) {
+      scene.sound.stopByKey('success_sfx');
+      updateLivesText();
+      updateBottleCountText();
+      updateScoreHud();
+      updateChallengeHud();
+      document.getElementById('start-menu').hidden = true;
+      document.getElementById('game-over-menu').hidden = true;
+      document.getElementById('level-success-menu').hidden = true;
+      document.getElementById('game-hud').hidden = false;
+      document.getElementById('challenge-hud').hidden = false;
+      playBackgroundMusic(scene);
+      scene.physics.world.resume();
+    }
+
+    function initializeLevelChallenge(scene) {
+      challengeLetterLabels = [];
+      bottleRespawns = [];
+      if (selectedMode === 'Hard') {
+        // No free ammo in the safe zone on Hard.
+        bottlePickups.getChildren()
+          .filter(bottle => bottle.x < LETTER_MIN_X)
+          .forEach(bottle => {
+            bottle.wiggleTween?.stop();
+            bottle.destroy();
+          });
+      }
+      const modeWordSets = {
+        Easy: {
+          spellWords: ['CAT', 'DOG', 'SUN', 'HAT', 'BED', 'FISH', 'JUMP', 'HAND', 'MILK', 'STAR', 'PLANT', 'SMILE', 'BREAD', 'CHAIR', 'TRAIN', 'CLOUD', 'GREEN', 'HAPPY', 'HOUSE', 'TIGER'],
+          questionAnswers: []
+        },
+        Medium: {
+          spellWords: ['FRIEND', 'SCHOOL', 'ANIMAL', 'GARDEN', 'BRIDGE', 'PLANET', 'ENOUGH', 'ANSWER', 'BRIGHT', 'JOURNEY'],
+          questionAnswers: [
+            { prompt: 'What planet do we live on?', answer: 'EARTH' },
+            { prompt: 'What shines in the sky during the day?', answer: 'SUN' },
+            { prompt: 'What gas do we breathe to stay alive?', answer: 'OXYGEN' },
+            { prompt: 'What animal says "meow"?', answer: 'CAT' },
+            { prompt: 'What part of a plant grows underground?', answer: 'ROOTS' },
+            { prompt: 'What do bees make?', answer: 'HONEY' },
+            { prompt: 'What is a baby dog called?', answer: 'PUPPY' },
+            { prompt: 'What famous ship sank after hitting an iceberg in 1912?', answer: 'TITANIC' },
+            { prompt: 'What ancient people built the pyramids in Egypt?', answer: 'EGYPTIANS' },
+            { prompt: 'What is 3 plus 4?', answer: 'SEVEN' },
+            { prompt: 'What is 10 minus 4?', answer: 'SIX' },
+            { prompt: 'What shape has four equal sides and four right angles?', answer: 'SQUARE' },
+            { prompt: 'How many days are in a week?', answer: 'SEVEN' },
+            { prompt: 'What do we call frozen water?', answer: 'ICE' },
+          ],
+        },
+        Hard: {
+          spellWords: ['BEAUTIFUL', 'NECESSARY', 'DIFFERENT', 'ENVIRONMENT', 'KNOWLEDGE', 'DEFINITELY', 'SEPARATE', 'OPPORTUNITY', 'SUCCESSFUL', 'EXPERIENCE', 'GOVERNMENT', 'RECOMMEND', 'CONVENIENT', 'RESPONSIBILITY', 'EMBARRASS', 'APPRECIATE', 'INDEPENDENT', 'ACHIEVEMENT', 'RESTAURANT', 'MISCHIEVOUS'],
+          questionAnswers: [
+            { prompt: 'What planet is known as the Red Planet?', answer: 'MARS' },
+            { prompt: 'What force pulls objects toward the Earth?', answer: 'GRAVITY' },
+            { prompt: 'What is the center of an atom called?', answer: 'NUCLEUS' },
+            { prompt: 'What gas do humans need to breathe to survive?', answer: 'OXYGEN' },
+            { prompt: 'What organ pumps blood around the body?', answer: 'HEART' },
+            { prompt: 'What do we call a number divisible only by 1 and itself?', answer: 'PRIME' },
+            { prompt: 'Which ancient city was buried by Mount Vesuvius in AD 79?', answer: 'POMPEII' },
+            { prompt: 'What wall divided Berlin during the Cold War?', answer: 'BERLIN' },
+            { prompt: 'What is a polygon with six sides called?', answer: 'HEXAGON' },
+            { prompt: 'What do you call the result of multiplying a number by itself?', answer: 'SQUARE' },
+            { prompt: 'What is the longest side of a right-angled triangle called?', answer: 'HYPOTENUSE' },
+            { prompt: 'What is the answer to a subtraction problem called?', answer: 'DIFFERENCE' },
+            { prompt: 'Which French military leader became emperor in 1804?', answer: 'NAPOLEON' },
+            { prompt: 'Which ancient civilization built the pyramids at Giza?', answer: 'EGYPTIANS' },
+            { prompt: 'What is the process plants use to make food from sunlight?', answer: 'PHOTOSYNTHESIS' },
+            { prompt: 'What is the mathematical term for the distance around a circle?', answer: 'CIRCUMFERENCE' },
+            { prompt: 'What is the name of a four-sided shape with equal sides and equal angles?', answer: 'SQUARE' },
+            { prompt: 'Which ancient empire was ruled by Julius Caesar?', answer: 'ROMAN' }
+          ],
+        }
+      };
+      const { spellWords, questionAnswers } = modeWordSets[selectedMode] || modeWordSets.Easy;
+      const allBottles = bottlePickups.getChildren().filter(bottle => bottle.active);
+      const letterBottleCount = allBottles.filter(bottle => bottle.x >= LETTER_MIN_X).length;
+      const challengeOptions = [];
+
+      spellWords
+        .filter(word => word.length <= letterBottleCount)
+        .forEach(word => challengeOptions.push({
+          type: 'spell',
+          key: `${selectedMode}:spell:${word}`,
+          prompt: `Spell: ${word}`,
+          answer: word,
+          expiresAtFrame: selectedMode === 'Medium' ? scene.game.loop.frame + 30 * 60 : selectedMode === 'Hard' ? scene.game.loop.frame + 10 * 60 : null
+        }));
+
+      if (selectedMode === 'Medium' || selectedMode === 'Hard') {
+        questionAnswers
+          .filter(question => question.answer.length <= letterBottleCount)
+          .forEach(question => challengeOptions.push({
+            type: 'question',
+            key: `${selectedMode}:question:${question.answer}`,
+            prompt: `Question: ${question.prompt}`,
+            answer: question.answer,
+            expiresAtFrame: null
+          }));
+      }
+
+      let available = challengeOptions.filter(option => !usedChallengeKeys.has(option.key));
+      if (!available.length) {
+        usedChallengeKeys.clear();
+        available = challengeOptions;
+      }
+
+      const selected = Phaser.Utils.Array.GetRandom(available);
+      if (!selected) return;
+      usedChallengeKeys.add(selected.key);
+
+      challengeState = {
+        complete: false,
+        requirements: [{
+          type: selected.type,
+          prompt: selected.prompt,
+          answer: selected.answer,
+          progress: 0,
+          timedOut: false,
+          expiresAtFrame: selected.expiresAtFrame,
+          displayedSeconds: selected.expiresAtFrame === null ? null : Math.max(1, Math.ceil((selected.expiresAtFrame - scene.game.loop.frame) / 60))
+        }]
+      };
+
+      const heartCount = selectedMode === 'Easy'
+        ? selected.answer.length
+        : selectedMode === 'Medium'
+          ? Math.max(1, Math.ceil(selected.answer.length / 2))
+          : 0;
+      spawnChallengeHearts(scene, allBottles, heartCount);
+
+      const shuffledBottles = Phaser.Utils.Array.Shuffle(
+        allBottles.filter(bottle => bottle.x >= LETTER_MIN_X)
+      );
+      let bottleIndex = 0;
+      challengeState.requirements.forEach(requirement => {
+        requirement.answer.split('').forEach((letter) => {
+          const bottle = shuffledBottles[bottleIndex++];
+          if (!bottle) return;
+          bottle.challengeLetter = letter;
+          bottle.challengeRequirement = requirement;
+          bottle.challengeLabel = scene.add.text(bottle.x, bottle.y, letter, {
+            fontSize: '17px',
+            fontStyle: 'bold',
+            color: '#000000',
+            stroke: '#ffffff',
+            strokeThickness: 2,
+            shadow: {
+              offsetX: 0,
+              offsetY: 1,
+              blur: 0,
+              color: '#000000',
+              stroke: true
+            }
+          }).setOrigin(0.5).setDepth(4);
+          challengeLetterLabels.push({ bottle, label: bottle.challengeLabel });
+        });
+      });
+      updateChallengeHud();
+    }
+
+    function updateChallengeHud() {
+      if (!challengeState || !challengePromptElement || !challengeProgressElement) return;
+      challengePromptElement.textContent = challengeState.requirements.map(requirement =>
+        requirement.type === 'spell' && requirement.timedOut ? 'Spell from memory' : requirement.prompt
+      ).join('  |  ');
+      challengeProgressElement.textContent = challengeState.requirements.map(requirement => {
+        const letters = requirement.answer.split('').map((letter, index) =>
+          index < requirement.progress ? letter : '_'
+        ).join(' ');
+        const timer = requirement.expiresAtFrame !== null && !requirement.timedOut
+          ? ` (${Math.max(0, Math.ceil((requirement.expiresAtFrame - activeScene.game.loop.frame) / 60))}s)`
+          : '';
+        return `${letters}${timer}`;
+      }).join('   ·   ');
+    }
+
+    function getAdversaryTypes() {
+      return [
+        { texture: 'goblin', label: 'BRUHPHIE', width: 59, height: 70, hp: 1, speed: 90 },
+        { texture: 'ttc', label: 'TTC MIKE', width: 76, height: 100, hp: 2, speed: 75 },
+        { texture: 'sushi', label: 'GABELICIOUS ROLL', width: 102, height: 110, hp: 3, speed: 85 }
+      ];
+    }
+
+    function createPlatformAdversary(scene, playerSprite, platform, floor, adversaryTypes) {
+      const weightedTypes = adversaryTypes.flatMap(type => Array.from({ length: Math.max(1, type.hp) }, () => type));
+      const adversaryType = Phaser.Utils.Array.GetRandom(weightedTypes);
+      if (adversaryType.texture === 'sushi') {
+        expandPlatformToSushiSize(platform, scene);
+        createHeartPickup(scene, platform.x, platform.body.top - 28);
+      }
+      const platformTop = platform.body.top;
+      const platformWidth = platform.body.width;
+      const platformX = platform.x;
+
+      const adversary = scene.physics.add.sprite(
+        platformX,
+        platformTop - adversaryType.height / 2,
+        adversaryType.texture
+      );
+      adversary.setDisplaySize(adversaryType.width, adversaryType.height);
+      adversary.setCollideWorldBounds(true);
+      adversary.body.setAllowGravity(false);
+      adversary.body.setSize(adversary.frame.width, adversary.frame.height);
+      adversary.body.setOffset(0, 0);
+      adversary.body.updateFromGameObject();
+      scene.physics.add.collider(adversary, floor);
+      scene.physics.add.collider(adversary, platform);
+
+      const bottleCount = adversaryType.hp;
+      const bottleSize = 30;
+      const platformBottles = [];
+      for (let bottleIndex = 0; bottleIndex < bottleCount; bottleIndex += 1) {
+        const progress = bottleCount === 1 ? 0.5 : bottleIndex / (bottleCount - 1);
+        const bottleX = platformX - platformWidth / 2 + bottleSize / 2 +
+          (platformWidth - bottleSize) * progress;
+        const sineLift = Math.sin(progress * Math.PI) * 18;
+        platformBottles.push(
+          createBottlePickup(scene, bottleX, platformTop - 32 - sineLift, bottleSize)
+        );
+      }
+
+      const hud = createEnemyHud(scene, adversary, adversaryType.label, adversaryType.hp);
+      const record = {
+        sprite: adversary,
+        hud,
+        direction: 1,
+        patrolMinX: platformX - platformWidth / 2 + adversaryType.width / 2,
+        patrolMaxX: platformX + platformWidth / 2 - adversaryType.width / 2,
+        platformTop,
+        bottles: platformBottles,
+        adversaryType,
+        speed: adversaryType.speed
+      };
+      levelAdversaries.push(record);
+      scene.physics.add.overlap(playerSprite, adversary, (player, enemy) => {
+        handleAdversaryContact(player, enemy, record, scene);
+      });
+      return record;
+    }
+
+    function generateLevelPlatforms(scene, playerSprite, floor, coffeeTable, couch, adversaryTypes) {
+
+      const floorTop = 430;
+      const minimumElevation = 125;
+      const maximumElevation = 195;
+      const platformXs = [];
+      let lastPlatformX = 600;
+      while (lastPlatformX < LEVEL_WIDTH - 300) {
+        const interval = Phaser.Math.Between(300, 500);
+        const platformX = lastPlatformX + interval;
+        if (platformX > LEVEL_WIDTH - 120) break;
+        platformXs.push(platformX);
+        lastPlatformX = platformX;
+      }
+
+      const peakIndex = Math.ceil((platformXs.length - 1) / 2);
+      platformXs.forEach((platformX, index) => {
+        const progress = peakIndex === 0
+          ? 0
+          : index <= peakIndex
+            ? index / peakIndex
+            : (platformXs.length - 1 - index) / (platformXs.length - 1 - peakIndex);
+        const elevation = Phaser.Math.Linear(minimumElevation, maximumElevation, progress);
+        const platformTop = floorTop - elevation;
+        const platformBlockCount = Phaser.Math.Between(7, 10);
+        const platform = createBlockPlatform(scene, platformX, platformTop, platformBlockCount);
+        scene.physics.add.collider(playerSprite, platform);
+        generatedPlatforms.push(platform);
+
+        createPlatformAdversary(scene, playerSprite, platform, floor, adversaryTypes);
+
+        if (Math.random() < 0.6) {
+          const groundX = Phaser.Math.Clamp(
+            platformX + Phaser.Math.Between(-140, 140), 220, LEVEL_WIDTH - 40
+          );
+          createBottlePickup(scene, groundX, floorTop - Math.floor(16 * Math.random()), 30);
+        }
+      });
+    }
+
+    function createBlockPlatform(scene, centerX, topY, blockCount) {
+      const blockSize = 30;
+      const width = blockCount * blockSize;
+      const platformHeight = blockSize;
+      const platform = scene.add.rectangle(
+        centerX,
+        topY + platformHeight / 2,
+        width,
+        platformHeight,
+        0xffffff,
+        0
+      );
+      platform.setSize(width, platformHeight);
+      scene.physics.add.existing(platform, true);
+      platform.body.setSize(width, platformHeight);
+      platform.body.updateFromGameObject();
+      platform.blockCount = blockCount;
+      platform.platformTop = topY;
+      platform.blockImages = [];
+
+      for (let index = 0; index < blockCount; index += 1) {
+        const blockImage = scene.add.image(
+          centerX - width / 2 + index * blockSize + blockSize / 2,
+          topY + blockSize / 2,
+          'platform_block'
+        ).setDisplaySize(blockSize, blockSize);
+        platform.blockImages.push(blockImage);
+      }
+
+      return platform;
+    }
+
+    function expandPlatformToSushiSize(platform, scene) {
+      const targetBlockCount = 10;
+      const targetWidth = targetBlockCount * 30;
+      const targetHeight = 30;
+
+      if (platform.setSize) platform.setSize(targetWidth, targetHeight);
+      if (platform.body) {
+        platform.body.setSize(targetWidth, targetHeight);
+        platform.body.setOffset(0, 0);
+        platform.body.updateFromGameObject();
+      }
+      platform.displayWidth = targetWidth;
+      platform.displayHeight = targetHeight;
+      platform.blockCount = targetBlockCount;
+
+      const blockImages = platform.blockImages || [];
+      for (let index = 0; index < targetBlockCount; index += 1) {
+        const x = platform.x - targetWidth / 2 + index * 30 + 15;
+        const y = platform.y;
+        if (!blockImages[index]) {
+          blockImages[index] = scene.add.image(x, y, 'platform_block').setDisplaySize(30, 30);
+        } else {
+          blockImages[index].setPosition(x, y).setVisible(true);
+        }
+      }
+
+      while (blockImages.length > targetBlockCount) {
+        const extraBlock = blockImages.pop();
+        if (extraBlock) extraBlock.setVisible(false);
+      }
+    }
+
+    function createBottlePickup(scene, x, surfaceY, size) {
+      const bottle = bottlePickups.create(x, surfaceY - size / 2, 'bottle');
+      bottle.setDisplaySize(size, size);
+      bottle.refreshBody();
+      bottle.setAngle(-15);
+      startBottleWiggle(scene, bottle);
+      return bottle;
+    }
+
+    function createHeartPickup(scene, x, y) {
+      const heart = heartPickups.create(x, y, 'heart_pickup');
+      heart.setDisplaySize(22, 22);
+      heart.refreshBody();
+      heart.setDepth(4);
+      return heart;
+    }
+
+    function collectHeart(playerSprite, heart) {
+      if (!heart.active) return;
+      heart.disableBody(true, true);
+      playerLives = Math.min(playerMaxLives, playerLives + 1);
+      updateLivesText();
+    }
+
+    function spawnChallengeHearts(scene, bottlePool, heartCount) {
+      if (heartCount <= 0) return;
+      const challengeBottlePositions = Phaser.Utils.Array.Shuffle(bottlePool.slice()).slice(0, heartCount);
+      challengeBottlePositions.forEach(bottle => {
+        createHeartPickup(scene, bottle.x, bottle.y - 26);
+      });
+    }
+
+    function startBottleWiggle(scene, bottle) {
+      bottle.wiggleTween?.stop();
+      bottle.wiggleTween = scene.tweens.add({
+        targets: bottle,
+        angle: 15,
+        duration: 450,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut'
+      });
+    }
+
+    function playMenuAudio(scene, audioKey, loop = false) {
+      scene.sound.stopByKey('easy_mode_sfx');
+      scene.sound.stopByKey('medium_mode_sfx');
+      scene.sound.stopByKey('hard_mode_sfx');
+
+      if (scene.sound.locked) {
+        pendingMenuAudioKey = audioKey;
+        if (!modeAudioUnlockListenerRegistered) {
+          modeAudioUnlockListenerRegistered = true;
+          scene.sound.once(Phaser.Sound.Events.UNLOCKED, () => {
+            modeAudioUnlockListenerRegistered = false;
+            if (document.getElementById('start-menu').hidden) return;
+            if (!introSound.isPlaying) introSound.play({ loop: true });
+            const queuedAudioKey = pendingMenuAudioKey;
+            pendingMenuAudioKey = null;
+            if (queuedAudioKey && queuedAudioKey !== 'intro_sfx') scene.sound.play(queuedAudioKey);
+          });
+        }
+        return;
+      }
+
+      pendingMenuAudioKey = null;
+      if (audioKey === 'intro_sfx') {
+        introSound.play({ loop: true });
+      } else {
+        scene.sound.play(audioKey, { loop: false });
+      }
+    }
+
+    function update(time, delta) {
+      if (this.physics.world.isPaused) return;
+
+      const speed = 240;
+
+      updateBottleRespawns(this);
+      updateTimedEffects(this);
+      updateChallengeTimer(this);
+      challengeLetterLabels.forEach(({ bottle, label }) => {
+        if (label.active && bottle.active) {
+          label.setPosition(bottle.x, bottle.y).setAngle(bottle.angle);
+        }
+      });
+
+      levelAdversaries.forEach(adversary => {
+        if (!adversary.sprite.active) return;
+        adversary.sprite.setY(adversary.platformTop - adversary.sprite.displayHeight / 2);
+        adversary.sprite.body.setVelocityY(0);
+        adversary.sprite.body.updateFromGameObject();
+        adversary.direction = patrolCharacter(
+          adversary.sprite,
+          adversary.direction,
+          adversary.patrolMinX,
+          adversary.patrolMaxX,
+          adversary.speed,
+          delta
+        );
+        positionEnemyHud(adversary.hud, adversary.sprite);
+      });
+
+      resolveProjectileHits(this);
+
+      // --- STATE CHECKERS ---
+      const onGround = player.body.onFloor();
+      const moveLeft = cursors.left.isDown || pad.x < 0;
+      const moveRight = cursors.right.isDown || pad.x > 0;
+      const isMoving = moveLeft || moveRight;
+
+      // Horizontal Movement
+      if (moveLeft) {
+        player.setVelocityX(-speed);
+        player.setFlipX(true); // Face left
+      } else if (moveRight) {
+        player.setVelocityX(speed);
+        player.setFlipX(false); // Face right
+      } else {
+        player.setVelocityX(0);
+      }
+
+      const bottlesPerThrow = getBottlesPerThrow();
+      const throwPressed = Phaser.Input.Keyboard.JustDown(this.throwKey) || pad.rtJust;
+      pad.rtJust = false;
+      if (throwPressed && bottleCount >= bottlesPerThrow) {
+        bottleCount -= bottlesPerThrow;
+        updateBottleCountText();
+        throwPoop(this);
+      }
+
+      // --- JUMP LOGIC ---
+
+      // Reset double jump ("Diaper Flutter") when touching ground/furniture
+      if (onGround && player.body.velocity.y >= 0) {
+        canDoubleJump = true;
+        isJumping = false;
+      }
+
+      // Jump / Double Jump Handler
+      const jumpPressed = Phaser.Input.Keyboard.JustDown(cursors.up) || pad.aJust;
+      pad.aJust = false;
+      if (jumpPressed) {
+        if (onGround) {
+          // First jump
+          jumpSound.play();
+          player.setVelocityY(-480);
+          isJumping = true;
+        } else if (canDoubleJump) {
+          // Second jump ("Diaper Flutter")
+          jumpSound.play();
+          player.setVelocityY(-400);
+          canDoubleJump = false; // Consumes the mid-air flutter
+          isJumping = true;
+        }
+      }
+
+      // --- SPRITE ANIMATION LOGIC ---
+      let textureKey;
+      if (isJumping) {
+        // Mid-air logic, entered only after a jump input
+        textureKey = canDoubleJump ? 'baby_jump' : 'baby_flutter';
+      } else if (isMoving) {
+        textureKey = 'baby_run';
+      } else {
+        // Stay on the static idle sprite until the player acts.
+        textureKey = 'baby_idle';
+      }
+
+      // Avoid resetting the texture every frame; only switch when state changes.
+      if (player.texture.key !== textureKey) {
+        player.setTexture(textureKey);
+      }
+    }
+
+    function updateBottleRespawns(scene) {
+      const frame = scene.game.loop.frame;
+      bottleRespawns = bottleRespawns.filter(entry => {
+        if (frame < entry.respawnAtFrame) return true;
+        const bottle = entry.bottle;
+        bottle.setActive(true).setVisible(true);
+        bottle.body.enable = true;
+        bottle.refreshBody();
+        bottle.setAngle(-15);
+        startBottleWiggle(scene, bottle);
+        if (bottle.challengeLabel) bottle.challengeLabel.setVisible(true);
+        return false;
+      });
+    }
+
+    function updateTimedEffects(scene) {
+      const frame = scene.game.loop.frame;
+      timedEffects = timedEffects.filter(effect => {
+        if (frame < effect.expiresAtFrame) return true;
+        effect.object.destroy();
+        return false;
+      });
+    }
+
+    function updateChallengeTimer(scene) {
+      if (!challengeState || challengeState.complete) return;
+      let changed = false;
+      challengeState.requirements.forEach(requirement => {
+        if (requirement.expiresAtFrame === null || requirement.timedOut) return;
+        const framesLeft = requirement.expiresAtFrame - scene.game.loop.frame;
+        if (framesLeft <= 0) {
+          requirement.timedOut = true;
+          changed = true;
+          return;
+        }
+        const secondsLeft = Math.ceil(framesLeft / 60);
+        if (secondsLeft !== requirement.displayedSeconds) {
+          requirement.displayedSeconds = secondsLeft;
+          changed = true;
+        }
+      });
+      if (changed) updateChallengeHud();
+    }
+
+    function patrolCharacter(character, direction, minX, maxX, speed, delta) {
+      if (character.body.blocked.left || character.body.touching.left) {
+        direction = 1;
+      } else if (character.body.blocked.right || character.body.touching.right) {
+        direction = -1;
+      }
+
+      if (character.x <= minX) direction = 1;
+      else if (character.x >= maxX) direction = -1;
+
+      const nextX = Phaser.Math.Clamp(
+        character.x + speed * direction * Math.min(delta, 50) / 1000,
+        minX,
+        maxX
+      );
+      if (nextX <= minX) direction = 1;
+      else if (nextX >= maxX) direction = -1;
+      character.setPosition(nextX, character.y);
+      character.body.setVelocity(0, 0);
+      character.body.updateFromGameObject();
+      // Character artwork faces right; flip it when moving left.
+      character.setFlipX(direction < 0);
+      return direction;
+    }
+
+    function handleBobGoblinContact(playerSprite, goblinSprite) {
+      handleAdversaryContact(playerSprite, goblinSprite, { hud: bobHud }, this);
+    }
+
+    function handleTtcContact(playerSprite, ttcSprite) {
+      handleAdversaryContact(playerSprite, ttcSprite, { hud: ttcHud }, this);
+    }
+
+    function handleSushiContact(playerSprite, sushiSprite) {
+      handleAdversaryContact(playerSprite, sushiSprite, { hud: sushiHud }, this);
+    }
+
+    function handleAdversaryContact(playerSprite, enemySprite, adversary, scene) {
+      if (!enemySprite.active) return;
+      if (isLandingOnEnemy(playerSprite, enemySprite)) {
+        stompEnemy(enemySprite, adversary.hud, scene);
+        playerSprite.setVelocityY(Math.min(playerSprite.body.velocity.y, -300));
+        return;
+      }
+
+      knockBackPlayer(playerSprite, enemySprite, scene);
+    }
+
+    function isLandingOnEnemy(playerSprite, enemySprite) {
+      // Tall enemies (TTC, Sushi) are nearly as high as a jump, so the player often
+      // touches them while still rising. Any contact with the upper part counts as a stomp.
+      const stompDepth = Math.max(18, enemySprite.body.height * 0.5);
+      return playerSprite.body.bottom <= enemySprite.body.top + stompDepth;
+    }
+
+    function knockBackPlayer(playerSprite, enemySprite, scene) {
+      const currentFrame = scene.game.loop.frame;
+      const canTakeDamage = !isDamageImmune(playerSprite, currentFrame) &&
+        !isDamageImmune(enemySprite, currentFrame);
+
+      if (canTakeDamage) {
+        grantDamageImmunity(scene, playerSprite, enemySprite);
+        scene.babyHitSound.play();
+        playerLives -= 1;
+        updateLivesText();
+        if (playerLives <= 0) {
+          showGameOver(scene);
+          return;
+        }
+      }
+
+      if (playerKnockbackActive) return;
+      playerKnockbackActive = true;
+
+      let pushDirection = playerSprite.body.center.x < enemySprite.body.center.x ? -1 : 1;
+      const halfPlayerWidth = playerSprite.displayWidth / 2;
+      const spaceToLeft = enemySprite.body.left - halfPlayerWidth;
+      const spaceToRight = GAME_WIDTH - enemySprite.body.right - halfPlayerWidth;
+      if (pushDirection < 0 && spaceToLeft < 0) pushDirection = 1;
+      else if (pushDirection > 0 && spaceToRight < 0) pushDirection = -1;
+
+      // Separate the sprites immediately so a mid-body overlap cannot trap the player.
+      playerSprite.setX(pushDirection < 0
+        ? enemySprite.body.left - halfPlayerWidth - 2
+        : enemySprite.body.right + halfPlayerWidth + 2);
+      playerSprite.setVelocity(pushDirection * 280, -260);
+      playerSprite.setTint(0xff4d6d);
+      scene.time.delayedCall(450, () => {
+        playerSprite.clearTint();
+        playerKnockbackActive = false;
+      });
+    }
+
+    function isDamageImmune(sprite, frame) {
+      return frame < (sprite.getData('damageImmuneUntilFrame') ?? -1);
+    }
+
+    function grantDamageImmunity(scene, ...sprites) {
+      const immunityEndFrame = scene.game.loop.frame + 120;
+      sprites.forEach(sprite => sprite.setData('damageImmuneUntilFrame', immunityEndFrame));
+    }
+
+    function showGameOver(scene) {
+      if (!document.getElementById('game-over-menu').hidden) return;
+      document.getElementById('game-over-menu').hidden = false;
+      document.getElementById('game-hud').hidden = true;
+      document.getElementById('challenge-hud').hidden = true;
+      backgroundMusic.stop();
+      scene.sound.stopByKey('easy_mode_sfx');
+      scene.sound.stopByKey('medium_mode_sfx');
+      scene.sound.stopByKey('hard_mode_sfx');
+      scene.gameOverSound.play();
+      scene.physics.world.pause();
+    }
+
+    function playBackgroundMusic(scene) {
+      const key = selectedMode === 'Hard' ? 'background_music_hard' : 'background_music';
+      if (backgroundMusic && backgroundMusic.key !== key) {
+        backgroundMusic.stop();
+        backgroundMusic.destroy();
+        backgroundMusic = null;
+      }
+      backgroundMusic ||= scene.sound.add(key, { loop: true });
+      if (!backgroundMusic.isPlaying) backgroundMusic.play();
+    }
+
+    function startGame(mode, lives, scene) {
+      selectedMode = mode;
+      levelNumber = 1;
+      score = 0;
+      usedChallengeKeys.clear();
+      playerLives = lives;
+      playerMaxLives = lives;
+      highestScore = Number(localStorage.getItem('lilianHighScore') || 0);
+      updateLivesText();
+      pendingMenuAudioKey = null;
+      introSound.stop();
+      scene.sound.stopByKey('easy_mode_sfx');
+      scene.sound.stopByKey('medium_mode_sfx');
+      scene.sound.stopByKey('hard_mode_sfx');
+      initializeLevelChallenge(scene);
+      updateChallengeHud();
+      playBackgroundMusic(scene);
+      beginGameplay(scene);
+    }
+
+    function updateLivesText() {
+      livesIcons.forEach((heart, index) => {
+        const inMode = index < playerMaxLives;
+        heart.hidden = !inMode;
+        heart.src = index < playerLives ? 'assets/baby/hp.png' : 'assets/baby/hp_empty.png';
+      });
+    }
+
+    function createEnemyHud(scene, enemySprite, label, maxHp) {
+      enemySprite.setData('maxHp', maxHp);
+      enemySprite.setData('hp', maxHp);
+      const barWidth = Math.max(48, Math.min(76, enemySprite.displayWidth * 0.82));
+      const container = scene.add.container(enemySprite.x, 0).setDepth(5);
+      const nameTag = scene.add.text(0, 0, label, {
+        fontSize: '12px', fontStyle: 'bold', color: '#ffffff',
+        backgroundColor: 'rgba(0, 0, 0, 0.72)', padding: { x: 5, y: 3 }
+      }).setOrigin(0.5, 1);
+      const barY = 5;
+      const barBackground = scene.add.rectangle(0, barY, barWidth, 7, 0x1f2937, 0.95);
+      const barFill = scene.add.rectangle(-barWidth / 2 + 1, barY, barWidth - 2, 4, 0x4ade80).setOrigin(0, 0.5);
+      const hpText = scene.add.text(0, barY, `${maxHp}/${maxHp}`, {
+        fontSize: '8px', color: '#ffffff', fontStyle: 'bold', stroke: '#111827', strokeThickness: 2
+      }).setOrigin(0.5);
+      container.add([barBackground, barFill, nameTag, hpText]);
+      const hud = { container, nameTag, barBackground, barFill, hpText, barWidth, maxHp, hp: maxHp, lastStompFrame: -1 };
+      positionEnemyHud(hud, enemySprite);
+      return hud;
+    }
+
+    function stompEnemy(enemySprite, enemyHud, scene) {
+      const frame = scene.game.loop.frame;
+      if (enemyHud.lastStompFrame === frame) return;
+      enemyHud.lastStompFrame = frame;
+      if (isDamageImmune(player, frame) || isDamageImmune(enemySprite, frame)) return;
+      if (!damageEnemy(enemySprite, enemyHud, scene)) return;
+      grantDamageImmunity(scene, player, enemySprite);
+      jumpHitSound.play();
+    }
+
+    function positionEnemyHud(enemyHud, enemySprite) {
+      enemyHud.container.setPosition(enemySprite.x, enemySprite.y - enemySprite.displayHeight / 2 - 24);
+    }
+
+    function damageEnemy(enemySprite, enemyHud, scene, ignoreImmunity = false) {
+      const hp = enemySprite.getData('hp');
+      if (!enemySprite.active || hp <= 0 || (!ignoreImmunity && isDamageImmune(enemySprite, scene.game.loop.frame))) return false;
+      enemyHud.hp = Math.max(0, hp - 1);
+      enemySprite.setData('hp', enemyHud.hp);
+      addScore(1);
+      grantDamageImmunity(scene, enemySprite);
+      enemyHud.barFill.width = (enemyHud.barWidth - 2) * enemyHud.hp / enemyHud.maxHp;
+      enemyHud.hpText.setText(`${enemyHud.hp}/${enemyHud.maxHp}`);
+      enemyHud.barFill.setFillStyle(enemyHud.hp / enemyHud.maxHp <= 0.4 ? 0xef4444 : 0x4ade80);
+      if (enemyHud.hp > 0) return true;
+      enemySprite.disableBody(true, true);
+      enemyHud.nameTag.setText('Defeated!');
+      enemyHud.barBackground.setVisible(false);
+      enemyHud.barFill.setVisible(false);
+      enemyHud.hpText.setVisible(false);
+      scene.time.delayedCall(900, () => enemyHud.container.destroy());
+      return true;
+    }
+
+    function collectBottle(playerSprite, bottle) {
+      if (!bottle.active || !challengeState || challengeState.complete) return;
+      if (bottle.challengeLetter) {
+        const requirement = bottle.challengeRequirement;
+        const expectedLetter = requirement?.answer[requirement.progress];
+        const isCorrectLetter = Boolean(expectedLetter) && bottle.challengeLetter === expectedLetter;
+        if (!isCorrectLetter) {
+          rejectLetterBottle(playerSprite, bottle, this);
+          return;
+        }
+        collectBottleSprite(bottle);
+        requirement.progress += 1;
+        addScore(1);
+        updateChallengeHud();
+        if (challengeState.requirements.every(item => item.progress >= item.answer.length)) finishLevel(this);
+        return;
+      }
+      collectBottleSprite(bottle);
+      addScore(1);
+    }
+
+    function collectBottleSprite(bottle) {
+      bottle.wiggleTween?.stop();
+      bottle.disableBody(true, true);
+      if (bottle.challengeLabel) bottle.challengeLabel.setVisible(false);
+      collectSound.play();
+      bottleCount += 1;
+      updateBottleCountText();
+    }
+
+    function rejectLetterBottle(playerSprite, bottle, scene) {
+      bottle.wiggleTween?.stop();
+      bottle.disableBody(true, true);
+      if (bottle.challengeLabel) bottle.challengeLabel.setVisible(false);
+      bottleRespawns.push({ bottle, respawnAtFrame: scene.game.loop.frame + 120 });
+      const explosion = scene.add.image(playerSprite.x, playerSprite.y, 'explosion')
+        .setDisplaySize(70, 70)
+        .setDepth(12);
+      timedEffects.push({ object: explosion, expiresAtFrame: scene.game.loop.frame + 30 });
+
+      const canTakeDamage = !isDamageImmune(playerSprite, scene.game.loop.frame);
+      if (canTakeDamage) {
+        grantDamageImmunity(scene, playerSprite);
+        scene.babyHitSound.play();
+        playerLives = Math.max(0, playerLives - 1);
+        updateLivesText();
+      }
+      const nearestEnemy = levelAdversaries
+        .filter(entry => entry.sprite.active)
+        .sort((a, b) => Phaser.Math.Distance.Between(playerSprite.x, playerSprite.y, a.sprite.x, a.sprite.y) -
+          Phaser.Math.Distance.Between(playerSprite.x, playerSprite.y, b.sprite.x, b.sprite.y))[0]?.sprite;
+      if (nearestEnemy) {
+        const pushDirection = playerSprite.x < nearestEnemy.x ? -1 : 1;
+        playerSprite.setVelocity(pushDirection * 280, -260);
+      } else {
+        playerSprite.setVelocityX(playerSprite.flipX ? 280 : -280);
+        playerSprite.setVelocityY(-260);
+      }
+      playerSprite.setTint(0xff4d6d);
+      playerKnockbackActive = true;
+      scene.time.delayedCall(450, () => {
+        if (playerSprite.active) playerSprite.clearTint();
+        playerKnockbackActive = false;
+      });
+      if (playerLives <= 0) showGameOver(scene);
+    }
+
+    function getBottlesPerThrow() {
+      return selectedMode === 'Easy' ? 1 : 2;
+    }
+
+    function updateBottleCountText() {
+      if (bottleCountText) {
+        bottleCountText.textContent = `Bottles: ${bottleCount} | Throws: ${Math.floor(bottleCount / getBottlesPerThrow())}`;
+      }
+    }
+
+    function updateScoreHud() {
+      if (hudScoreText) hudScoreText.textContent = `Score: ${score} | Best: ${highestScore}`;
+      if (hudLevelText) hudLevelText.textContent = `Level ${levelNumber}`;
+    }
+
+    function addScore(points) {
+      score += points;
+      if (score > highestScore) {
+        highestScore = score;
+        localStorage.setItem('lilianHighScore', String(highestScore));
+      }
+      updateScoreHud();
+    }
+
+    function finishLevel(scene) {
+      if (!challengeState || challengeState.complete) return;
+      challengeState.complete = true;
+      const remainingHp = levelAdversaries.reduce((sum, entry) =>
+        sum + (entry.sprite.getData('hp') || 0), 0);
+      addScore(remainingHp * 2);
+      document.getElementById('level-success-title').textContent = 'LEVEL COMPLETE!';
+      document.getElementById('level-success-message').textContent = `Level ${levelNumber} challenge complete!`;
+      document.getElementById('level-success-score').textContent = `Score: ${score} · Best: ${highestScore}`;
+      document.getElementById('level-success-menu').hidden = false;
+      document.getElementById('game-hud').hidden = true;
+      document.getElementById('challenge-hud').hidden = true;
+      document.getElementById('next-level-button').focus();
+      backgroundMusic.stop();
+      scene.sound.play('success_sfx');
+      scene.physics.world.pause();
+    }
+
+    function throwPoop(scene) {
+      projectileSound.play();
+      const direction = player.flipX ? -1 : 1;
+      const projectile = poopProjectiles.create(player.x + direction * 22, player.y, 'projectile');
+      projectile.projectileId = nextProjectileId++;
+      projectile.hasHit = false;
+      projectile.setDisplaySize(18, 18);
+      projectile.body.setSize(18, 18, true);
+      projectile.body.allowGravity = false;
+      projectile.setVelocity(direction * 420, -35);
+      scene.time.delayedCall(1800, () => { if (projectile.active) projectile.destroy(); });
+    }
+
+    function resolveProjectileHits(scene) {
+      for (const projectile of poopProjectiles.getChildren()) {
+        if (!projectile.active || projectile.hasHit || !projectile.body?.enable) continue;
+
+        for (const { sprite: enemySprite, hud: enemyHud } of levelAdversaries) {
+          if (!enemySprite.active || !enemySprite.body?.enable) continue;
+          if (!Phaser.Geom.Intersects.RectangleToRectangle(projectile.body, enemySprite.body)) continue;
+
+          // Consume a shot once, then remove one HP from only the first target.
+          projectile.hasHit = true;
+          projectile.body.stop();
+          projectile.body.enable = false;
+          projectile.destroy();
+          damageEnemy(enemySprite, enemyHud, scene, true);
+          break;
+        }
+      }
+    }
+  </script>
+</body>
+
+</html>
