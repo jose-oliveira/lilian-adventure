@@ -25,8 +25,12 @@
       height: 100vh;
       overflow: hidden;
       background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
+    /* Phaser's autoCenter injects inline margins that push the canvas off large screens. */
     #game-container canvas {
       display: block;
       max-width: 100%;
@@ -172,10 +176,55 @@
     }
 
     .mode-button:focus-visible,
+    .character-button:focus-visible,
     .restart-button:focus-visible,
     .game-menu button:focus {
       outline: 4px solid #6bbfb5;
       outline-offset: 3px;
+    }
+
+    .selection-heading {
+      margin: 0 0 10px;
+      color: #236c73;
+      font-size: 18px;
+    }
+
+    .character-options {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .character-button {
+      width: 96px;
+      height: 96px;
+      padding: 6px;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      background: #d9f4ee;
+      cursor: pointer;
+      transition: transform 150ms ease, background 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+    }
+
+    .character-button:hover {
+      transform: translateY(-3px);
+      background: #c9eee6;
+    }
+
+    .character-button[aria-pressed="true"] {
+      border-color: #238f91;
+      background: #bcebe2;
+      box-shadow: 0 8px 20px rgba(46, 142, 145, 0.18);
+    }
+
+    .character-button img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 7px;
+      object-fit: cover;
     }
 
     .mode-button,
@@ -340,24 +389,29 @@
   <div id="start-menu" class="game-menu" role="dialog" aria-modal="true" aria-labelledby="menu-title">
     <div class="menu-card">
       <h1 id="menu-title">Lilian's Great Adventure</h1>
-      <p>Choose your challenge.</p>
+      <h2 class="selection-heading">Choose your character</h2>
+      <div id="character-options" class="character-options" role="group" aria-label="Character"></div>
+      <h2 class="selection-heading">Choose your difficulty</h2>
       <div class="menu-content">
         <div class="mode-options" role="group" aria-label="Difficulty">
-          <button class="mode-button" data-mode="Easy" data-lives="8" data-image="assets/baby/easy.png"
-            data-description="A gentler crawl for new adventurers." aria-pressed="false">
+          <button class="mode-button" data-mode="Easy" data-lives="8"
+            data-description="Spell easy words. Questions, but the letters are in the correct order already."
+            aria-pressed="false">
             <strong>Easy</strong><span>8 lives</span>
           </button>
-          <button class="mode-button" data-mode="Medium" data-lives="5" data-image="assets/baby/medium.png"
-            data-description="A balanced challenge for the average crawler." aria-pressed="false">
+          <button class="mode-button" data-mode="Medium" data-lives="5"
+            data-description="Spell medium-difficulty words. Questions with letters slightly jumbled."
+            aria-pressed="false">
             <strong>Medium</strong><span>5 lives</span>
           </button>
-          <button class="mode-button" data-mode="Hard" data-lives="3" data-image="assets/baby/hard.png"
-            data-description="A tough test for seasoned crawlers." aria-pressed="false">
+          <button class="mode-button" data-mode="Hard" data-lives="3"
+            data-description="Spell hard words. Questions with letters heavily jumbled. Are you ready?"
+            aria-pressed="false">
             <strong>Hard</strong><span>3 lives</span>
           </button>
         </div>
         <div class="mode-preview" aria-live="polite">
-          <img id="mode-image" src="assets/baby/easy.png" alt="Baby character">
+          <img id="mode-image" src="assets/baby/easy.png" alt="Baby character for Easy difficulty">
           <h2 id="mode-preview-title">Choose a difficulty</h2>
           <p id="mode-description">Select Easy, Medium, or Hard to preview your challenge.</p>
         </div>
@@ -379,7 +433,7 @@
           <button id="restart-button" class="restart-button">Return to level selection</button>
         </div>
         <div class="mode-preview game-over-preview">
-          <img src="assets/baby/game_over.png" alt="Crying baby after game over">
+          <img id="game-over-image" src="assets/baby/game_over.png" alt="Baby after game over">
         </div>
       </div>
     </div>
@@ -396,7 +450,7 @@
           <button id="next-level-button" class="restart-button">Next Level</button>
         </div>
         <div class="mode-preview game-over-preview">
-          <img src="assets/baby/success.png" alt="Level completed successfully">
+          <img id="level-success-image" src="assets/baby/success.png" alt="Baby after completing the level">
         </div>
       </div>
     </div>
@@ -410,7 +464,7 @@
     <div id="hud-hearts" class="hud-hearts" aria-label="Health"></div>
   </div>
   <div id="challenge-hud" class="challenge-hud" aria-live="polite" hidden>
-    <img id="challenge-avatar" class="challenge-avatar" src="assets/baby/casper.png" alt="">
+    <img id="challenge-avatar" class="challenge-avatar" src="assets/game/casper.png" alt="">
     <div class="challenge-text">
       <span id="challenge-prompt"></span>
       <small id="challenge-progress"></small>
@@ -424,9 +478,38 @@
     const LETTER_MIN_X = 200;
     const LEVEL_WIDTH = 2000;
     const displayScale = Math.min(window.innerWidth / GAME_WIDTH, window.innerHeight / GAME_HEIGHT);
-    // TV/console browsers have limited GPU memory; cap the canvas at 2x there.
-    const MAX_RENDER_SCALE = /Xbox|PlayStation|Tizen|WebOS|SMART-TV/i.test(navigator.userAgent) ? 2 : 3;
-    const RENDER_SCALE = Math.max(1, Math.min(MAX_RENDER_SCALE, Math.ceil(Math.max(window.devicePixelRatio || 1, displayScale))));
+    // Consoles/TVs have weak GPUs: render at 1x there (the canvas is still scaled to fit the screen).
+    const isConsoleBrowser = /Xbox|PlayStation|Tizen|WebOS|SMART-TV/i.test(navigator.userAgent);
+    const RENDER_SCALE = isConsoleBrowser
+      ? 1
+      : Math.max(1, Math.min(3, Math.ceil(Math.max(window.devicePixelRatio || 1, displayScale))));
+
+    const characters = [
+      {
+        id: 'baby',
+        name: 'Baby',
+        folder: 'assets/baby',
+        portrait: 'assets/baby/portrait.png',
+        animations: {
+          idle: 'idle.png?v=2',
+          run: 'run.png',
+          jump: 'jump.png',
+          flutter: 'flutter.png'
+        }
+      },
+      {
+        id: 'bruhphie',
+        name: 'Bruhphie',
+        folder: 'assets/goblin',
+        portrait: 'assets/goblin/portrait.png',
+        animations: {
+          idle: 'idle.png',
+          run: 'run.png',
+          jump: 'jump.png',
+          flutter: 'flutter.png'
+        }
+      }
+    ];
 
     const config = {
       type: Phaser.AUTO,
@@ -434,13 +517,14 @@
       width: GAME_WIDTH * RENDER_SCALE,
       height: GAME_HEIGHT * RENDER_SCALE,
       render: {
-        antialias: true,
+        antialias: !isConsoleBrowser,
+        powerPreference: 'high-performance',
         pixelArt: false,
         roundPixels: false
       },
       scale: {
         mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
+        autoCenter: Phaser.Scale.NO_CENTER
       },
       physics: {
         default: 'arcade',
@@ -559,6 +643,7 @@
     let playerLives = 0;
     let playerMaxLives = 0;
     let selectedMode = '';
+    let selectedCharacter = characters[0];
     let bottlePickups;
     let heartPickups;
     let bottleCount = 0;
@@ -588,43 +673,44 @@
     let hudLevelText;
     let challengePromptElement;
     let challengeProgressElement;
-    let usedChallengeKeys = new Set();
 
     function init(data = {}) {
       this.isNextLevelRun = Boolean(data.nextLevel);
+      this.isStartingGame = Boolean(data.startGame);
       if (this.isNextLevelRun && Number.isInteger(data.levelNumber)) levelNumber = data.levelNumber;
     }
 
     function preload() {
       // --- LOAD EXTERNAL PNG ASSETS ---
-      this.load.image('baby_idle', 'assets/baby/baby_idle.png?v=2');
-      this.load.image('baby_run', 'assets/baby/baby_run.png');
-      this.load.image('baby_jump', 'assets/baby/baby_jump.png');
-      this.load.image('baby_flutter', 'assets/baby/baby_flutter.png');
-      this.load.image('hp_full', 'assets/baby/hp.png');
-      this.load.image('hp_empty', 'assets/baby/hp_empty.png');
-      this.load.image('goblin', 'assets/goblin/goblin.png');
+      characters.forEach(character => {
+        Object.entries(character.animations).forEach(([animation, filename]) => {
+          this.load.image(`${character.id}_${animation}`, `${character.folder}/${filename}`);
+        });
+        this.load.image(`${character.id}_collectable`, `${character.folder}/collectables/collectable-1.png`);
+        this.load.image(`${character.id}_projectile`, `${character.folder}/projectile/projectile.png`);
+        ['easy', 'medium', 'hard'].forEach(mode => {
+          this.load.audio(`${character.id}_${mode}_mode_sfx`, `${character.folder}/${mode}.mp3`);
+        });
+        ['jump', 'hit', 'jump_hit', 'game_over'].forEach(name => {
+          this.load.audio(`${character.id}_${name}_sfx`, `${character.folder}/${name}.mp3`);
+        });
+        this.load.audio(`${character.id}_collect_sfx`, `${character.folder}/collectables/collect.mp3`);
+        this.load.audio(`${character.id}_projectile_sfx`, `${character.folder}/projectile/projectile.mp3`);
+      });
+      this.load.image('hp_full', 'assets/game/hp.png');
+      this.load.image('hp_empty', 'assets/game/hp_empty.png');
+      this.load.image('bruhphie_adversary', 'assets/goblin/goblin.png');
+      this.load.image('baby_adversary', 'assets/baby/baby.png?v=2');
       this.load.image('ttc', 'assets/ttc/ttc.png');
       this.load.image('sushi', 'assets/sushi/sushi.png');
-      this.load.image('bottle', 'assets/collectables/bottle.png');
-      this.load.image('heart_pickup', 'assets/baby/hp.png');
-      this.load.image('platform_block', 'assets/block.png');
-      this.load.image('projectile', 'assets/projectile/projectile.png');
-      this.load.image('explosion', 'assets/explosion.png');
-      this.load.image('background', 'assets/background.png');
-      this.load.audio('projectile_sfx', 'assets/projectile/projectile.mp3');
-      this.load.audio('intro_sfx', 'assets/intro.mp3');
-      this.load.audio('background_music', 'assets/background.mp3');
-      this.load.audio('background_music_hard', 'assets/background-hard.mp3');
-      this.load.audio('success_sfx', 'assets/success.mp3');
-      this.load.audio('collect_sfx', 'assets/collectables/collect.mp3');
-      this.load.audio('jump_sfx', 'assets/baby/baby_jump.mp3');
-      this.load.audio('baby_hit_sfx', 'assets/baby/baby_hit.mp3');
-      this.load.audio('jump_hit_sfx', 'assets/baby/baby_jump_hit.mp3');
-      this.load.audio('easy_mode_sfx', 'assets/baby/easy.mp3');
-      this.load.audio('medium_mode_sfx', 'assets/baby/medium.mp3');
-      this.load.audio('hard_mode_sfx', 'assets/baby/hard.mp3');
-      this.load.audio('game_over_sfx', 'assets/baby/game_over.mp3');
+      this.load.image('heart_pickup', 'assets/game/hp.png');
+      this.load.image('platform_block', 'assets/game/block.png');
+      this.load.image('explosion', 'assets/game/explosion.png');
+      this.load.image('background', 'assets/game/background.png');
+      this.load.audio('intro_sfx', 'assets/game/intro.mp3');
+      this.load.audio('background_music', 'assets/game/background.mp3');
+      this.load.audio('background_music_hard', 'assets/game/background-hard.mp3');
+      this.load.audio('success_sfx', 'assets/game/success.mp3');
     }
 
     function create() {
@@ -639,19 +725,18 @@
       challengeLetterLabels = [];
       bottleRespawns = [];
       timedEffects = [];
-      if (!this.isNextLevelRun) {
+      if (!this.isNextLevelRun && !this.isStartingGame) {
         levelNumber = 1;
         score = 0;
         playerLives = 0;
         selectedMode = '';
-        usedChallengeKeys.clear();
       }
 
       this.cameras.main.setZoom(RENDER_SCALE).centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
       this.cameras.main.setBounds(0, 0, LEVEL_WIDTH, GAME_HEIGHT);
       this.cameras.main.setRoundPixels(false);
       this.physics.world.setBounds(0, 0, LEVEL_WIDTH, GAME_HEIGHT);
-      this.textures.get('baby_idle').setFilter(Phaser.Textures.FilterMode.LINEAR);
+      this.textures.get(`${selectedCharacter.id}_idle`).setFilter(Phaser.Textures.FilterMode.LINEAR);
 
       // 1. Background artwork spans the full level; camera shows 1000 units at a time.
       this.add.rectangle(LEVEL_WIDTH / 2, GAME_HEIGHT / 2, LEVEL_WIDTH, GAME_HEIGHT, 0x3b82f6).setDepth(-2);
@@ -668,12 +753,12 @@
       const coffeeTable = createBlockPlatform(this, 300, 330, 7);
       const couch = createBlockPlatform(this, 600, 265, 8);
 
-      // 3. Player Setup (Using 'baby_idle' texture)
+      // 3. Player Setup
       // Start position: 100x, 350y
-      player = this.physics.add.sprite(100, 350, 'baby_idle');
+      player = this.physics.add.sprite(100, 350, `${selectedCharacter.id}_idle`);
 
       // Preserve the previous 64px height without distorting the higher-res art.
-      const idleFrame = this.textures.getFrame('baby_idle');
+      const idleFrame = this.textures.getFrame(`${selectedCharacter.id}_idle`);
       const playerDisplayHeight = 64;
       const playerDisplayWidth = playerDisplayHeight * idleFrame.width / idleFrame.height;
       const playerScaleX = playerDisplayWidth / idleFrame.width;
@@ -720,14 +805,26 @@
       this.physics.add.overlap(player, heartPickups, collectHeart, null, this);
 
       poopProjectiles = this.physics.add.group({ allowGravity: false });
-      projectileSound ||= this.sound.add('projectile_sfx');
+      const projectileSoundKey = getCharacterAssetKey('projectile_sfx');
+      if (projectileSound?.key !== projectileSoundKey) {
+        projectileSound?.destroy();
+        projectileSound = this.sound.add(projectileSoundKey);
+      }
       introSound ||= this.sound.add('intro_sfx');
       backgroundMusic ||= this.sound.add('background_music', { loop: true });
-      collectSound ||= this.sound.add('collect_sfx');
-      jumpSound ||= this.sound.add('jump_sfx');
-      this.babyHitSound = this.babyHitSound || this.sound.add('baby_hit_sfx');
-      jumpHitSound ||= this.sound.add('jump_hit_sfx');
-      this.gameOverSound = this.gameOverSound || this.sound.add('game_over_sfx');
+      const collectSoundKey = getCharacterAssetKey('collect_sfx');
+      if (collectSound?.key !== collectSoundKey) {
+        collectSound?.destroy();
+        collectSound = this.sound.add(collectSoundKey);
+      }
+      const characterSound = name => {
+        const key = `${selectedCharacter.id}_${name}_sfx`;
+        return this.sound.get(key) || this.sound.add(key);
+      };
+      jumpSound = characterSound('jump');
+      this.babyHitSound = characterSound('hit');
+      jumpHitSound = characterSound('jump_hit');
+      this.gameOverSound = characterSound('game_over');
 
       const adversaryTypes = getAdversaryTypes();
       createPlatformAdversary(this, player, coffeeTable, floor, adversaryTypes);
@@ -744,7 +841,7 @@
       heartsContainer.replaceChildren();
       livesIcons = Array.from({ length: 8 }, (_, index) => {
         const heart = document.createElement('img');
-        heart.src = 'assets/baby/hp_empty.png';
+        heart.src = 'assets/game/hp_empty.png';
         heart.alt = `Life ${index + 1}`;
         heart.hidden = true;
         heartsContainer.appendChild(heart);
@@ -756,7 +853,7 @@
       challengePromptElement = document.getElementById('challenge-prompt');
       challengeProgressElement = document.getElementById('challenge-progress');
       document.getElementById('challenge-avatar').src =
-        Phaser.Utils.Array.GetRandom(['assets/baby/sam.png', 'assets/baby/casper.png']);
+        Phaser.Utils.Array.GetRandom(['assets/game/sam.png', 'assets/game/casper.png']);
       updateScoreHud();
       hudLevelText.textContent = `Level ${levelNumber}`;
 
@@ -764,7 +861,7 @@
       document.getElementById('game-over-menu').hidden = true;
       document.getElementById('level-success-menu').hidden = true;
 
-      if (this.isNextLevelRun) {
+      if (this.isNextLevelRun || this.isStartingGame) {
         initializeLevelChallenge(this);
         beginGameplay(this);
       } else {
@@ -777,20 +874,46 @@
 
     function bindMenuHandlers() {
       if (menuHandlersBound) return;
+      const characterOptions = document.getElementById('character-options');
+      characters.forEach(character => {
+        const button = document.createElement('button');
+        button.className = 'character-button';
+        button.type = 'button';
+        button.dataset.character = character.id;
+        button.setAttribute('aria-label', character.name);
+        button.setAttribute('aria-pressed', String(character === selectedCharacter));
+        button.innerHTML = `<img src="${character.portrait}" alt="">`;
+        button.addEventListener('click', () => {
+          selectedCharacter = character;
+          characterOptions.querySelectorAll('.character-button').forEach(option => {
+            option.setAttribute('aria-pressed', String(option === button));
+          });
+          const modeImage = document.getElementById('mode-image');
+          const difficulty = chosenModeButton?.dataset.mode || 'Easy';
+          modeImage.src = getCharacterDifficultyImage(character, difficulty);
+          modeImage.alt = `${character.name} character for ${difficulty} difficulty`;
+          updateOutcomeImages(character);
+          updateStartButtonState();
+        });
+        characterOptions.appendChild(button);
+      });
+
       const modeButtons = Array.from(document.querySelectorAll('.mode-button'));
       modeButtons.forEach(button => {
         button.addEventListener('click', () => {
           chosenModeButton = button;
-          const audioKey = `${button.dataset.mode.toLowerCase()}_mode_sfx`;
+          const audioKey = `${selectedCharacter.id}_${button.dataset.mode.toLowerCase()}_mode_sfx`;
           playMenuAudio(activeScene, audioKey, false);
           modeButtons.forEach(option => option.setAttribute('aria-pressed', String(option === button)));
-          document.getElementById('mode-image').src = button.dataset.image;
-          document.getElementById('mode-image').alt = `Baby character for ${button.dataset.mode} difficulty`;
+          document.getElementById('mode-image').src =
+            getCharacterDifficultyImage(selectedCharacter, button.dataset.mode);
+          document.getElementById('mode-image').alt =
+            `${selectedCharacter.name} character for ${button.dataset.mode} difficulty`;
           document.getElementById('mode-preview-title').textContent = button.dataset.mode;
           document.getElementById('mode-description').textContent = button.dataset.description;
           document.getElementById('mode-footer-description').textContent =
-            `${button.dataset.mode} difficulty · ${button.dataset.lives} lives`;
-          document.getElementById('start-game-button').disabled = false;
+            `${selectedCharacter.name} · ${button.dataset.mode} difficulty · ${button.dataset.lives} lives`;
+          updateStartButtonState();
         });
       });
 
@@ -805,6 +928,39 @@
         activeScene.scene.restart({ nextLevel: true, levelNumber: levelNumber + 1 });
       });
       menuHandlersBound = true;
+    }
+
+    function updateStartButtonState() {
+      const startButton = document.getElementById('start-game-button');
+      startButton.disabled = !chosenModeButton || !selectedCharacter;
+      if (chosenModeButton) {
+        document.getElementById('mode-footer-description').textContent =
+          `${selectedCharacter.name} · ${chosenModeButton.dataset.mode} difficulty · ${chosenModeButton.dataset.lives} lives`;
+      }
+    }
+
+    function getCharacterDifficultyImage(character, difficulty) {
+      return `${character.folder}/${difficulty.toLowerCase()}.png`;
+    }
+
+    function stopModeSounds(scene) {
+      characters.forEach(character => {
+        ['easy', 'medium', 'hard'].forEach(mode => scene.sound.stopByKey(`${character.id}_${mode}_mode_sfx`));
+      });
+    }
+
+    function getCharacterAssetKey(asset) {
+      return `${selectedCharacter.id}_${asset}`;
+    }
+
+    function updateOutcomeImages(character) {
+      const gameOverImage = document.getElementById('game-over-image');
+      gameOverImage.src = `${character.folder}/game_over.png`;
+      gameOverImage.alt = `${character.name} after game over`;
+
+      const successImage = document.getElementById('level-success-image');
+      successImage.src = `${character.folder}/success.png`;
+      successImage.alt = `${character.name} after completing the level`;
     }
 
     function beginGameplay(scene) {
@@ -836,26 +992,92 @@
       }
       const modeWordSets = {
         Easy: {
-          spellWords: ['CAT', 'DOG', 'SUN', 'HAT', 'BED', 'FISH', 'JUMP', 'HAND', 'MILK', 'STAR', 'PLANT', 'SMILE', 'BREAD', 'CHAIR', 'TRAIN', 'CLOUD', 'GREEN', 'HAPPY', 'HOUSE', 'TIGER'],
-          questionAnswers: []
+          spellWords: [
+            'RED',
+            'JAM',
+            'PIG',
+            'FROG',
+            'MILK',
+            'JUMP',
+            'FISH',
+            'HAND',
+            'SMILE',
+            'TRAIN',
+            'CLOUD',
+            'BRICK',
+            'PLANT',
+            'BASKET',
+            'MONKEY',
+            'POCKET',
+            'SILVER',
+            'PENCIL'
+          ],
+          questionAnswers: [
+            { prompt: 'What animal says "meow"?', answer: 'CAT' },
+            { prompt: 'What color is the sky on a clear day?', answer: 'BLUE' },
+            { prompt: 'What do you wear on your feet inside shoes?', answer: 'SOCKS' },
+            { prompt: 'What animal says "woof"?', answer: 'DOG' },
+            { prompt: 'What do bees make?', answer: 'HONEY' },
+            { prompt: 'What is the opposite of hot?', answer: 'COLD' },
+            { prompt: 'What fruit is often red or green and grows on trees?', answer: 'APPLE' },
+            { prompt: 'How many legs does a spider have?', answer: 'EIGHT' },
+            { prompt: 'What do you call a baby dog?', answer: 'PUPPY' },
+            { prompt: 'What do you use to write on a chalkboard?', answer: 'CHALK' },
+            { prompt: 'What planet do we live on?', answer: 'EARTH' },
+            { prompt: 'What do caterpillars turn into?', answer: 'MOTHS' },
+            { prompt: 'What is 5 plus 4?', answer: 'NINE' },
+            { prompt: 'What is 10 minus 3?', answer: 'SEVEN' },
+            { prompt: 'What shape is a ball?', answer: 'SPHERE' },
+            { prompt: 'What shines in the sky at night and changes shape?', answer: 'MOON' },
+            { prompt: 'What do plants need from the Sun to grow?', answer: 'LIGHT' },
+            { prompt: 'What is 2 multiplied by 3?', answer: 'SIX' },
+            { prompt: 'What is the name of the season after summer?', answer: 'AUTUMN' },
+          ],
         },
         Medium: {
-          spellWords: ['FRIEND', 'SCHOOL', 'ANIMAL', 'GARDEN', 'BRIDGE', 'PLANET', 'ENOUGH', 'ANSWER', 'BRIGHT', 'JOURNEY'],
+          spellWords: [
+            'MAP',
+            'FOX',
+            'SHIP',
+            'FROG',
+            'CAMP',
+            'SHELL',
+            'BRUSH',
+            'CRISP',
+            'THINK',
+            'SPOON',
+            'PLANET',
+            'JUNGLE',
+            'STREAM',
+            'POCKET',
+            'SPRING',
+            'THRONE',
+            'SCRAPE',
+            'FLIGHT',
+            'STRETCH',
+            'CHIMES'
+          ],
           questionAnswers: [
-            { prompt: 'What planet do we live on?', answer: 'EARTH' },
-            { prompt: 'What shines in the sky during the day?', answer: 'SUN' },
-            { prompt: 'What gas do we breathe to stay alive?', answer: 'OXYGEN' },
-            { prompt: 'What animal says "meow"?', answer: 'CAT' },
-            { prompt: 'What part of a plant grows underground?', answer: 'ROOTS' },
-            { prompt: 'What do bees make?', answer: 'HONEY' },
-            { prompt: 'What is a baby dog called?', answer: 'PUPPY' },
-            { prompt: 'What famous ship sank after hitting an iceberg in 1912?', answer: 'TITANIC' },
-            { prompt: 'What ancient people built the pyramids in Egypt?', answer: 'EGYPTIANS' },
-            { prompt: 'What is 3 plus 4?', answer: 'SEVEN' },
-            { prompt: 'What is 10 minus 4?', answer: 'SIX' },
-            { prompt: 'What shape has four equal sides and four right angles?', answer: 'SQUARE' },
-            { prompt: 'How many days are in a week?', answer: 'SEVEN' },
-            { prompt: 'What do we call frozen water?', answer: 'ICE' },
+            { prompt: 'What animal is known as the king of the jungle?', answer: 'LION' },
+            { prompt: 'What do bees collect from flowers to make honey?', answer: 'NECTAR' },
+            { prompt: 'What is the name of the planet closest to the Sun?', answer: 'MERCURY' },
+            { prompt: 'What is 8 multiplied by 4?', answer: 'THIRTYTWO' },
+            { prompt: 'What do you call a person who writes books?', answer: 'AUTHOR' },
+            { prompt: 'What is the hardest natural substance on Earth?', answer: 'DIAMOND' },
+            { prompt: 'What is the opposite of victory?', answer: 'DEFEAT' },
+            { prompt: 'What do plants absorb from the Sun to help them grow?', answer: 'LIGHT' },
+            { prompt: 'Which continent is Brazil in?', answer: 'SOUTH AMERICA' },
+            { prompt: 'What is a shape with six sides called?', answer: 'HEXAGON' },
+            { prompt: 'What is the name of the galaxy we live in?', answer: 'MILKY WAY' },
+            { prompt: 'What is 100 divided by 10?', answer: 'TEN' },
+            { prompt: 'What is the largest planet in our solar system?', answer: 'JUPITER' },
+            { prompt: 'What do you call an animal that eats both plants and meat?', answer: 'OMNIVORE' },
+            { prompt: 'Which famous Egyptian structures were built as tombs for pharaohs?', answer: 'PYRAMIDS' },
+            { prompt: 'What is the name for water changing into vapor?', answer: 'EVAPORATION' },
+            { prompt: 'What is the result of a multiplication problem called?', answer: 'PRODUCT' },
+            { prompt: 'Which ocean is the largest on Earth?', answer: 'PACIFIC' },
+            { prompt: 'What force pulls objects toward Earth?', answer: 'GRAVITY' },
+            { prompt: 'What is the name of the imaginary line around Earth halfway between the poles?', answer: 'EQUATOR' }
           ],
         },
         Hard: {
@@ -883,69 +1105,47 @@
         }
       };
       const { spellWords, questionAnswers } = modeWordSets[selectedMode] || modeWordSets.Easy;
-      const allBottles = bottlePickups.getChildren().filter(bottle => bottle.active);
-      const letterBottleCount = allBottles.filter(bottle => bottle.x >= LETTER_MIN_X).length;
-      const challengeOptions = [];
-
-      spellWords
-        .filter(word => word.length <= letterBottleCount)
-        .forEach(word => challengeOptions.push({
-          type: 'spell',
-          key: `${selectedMode}:spell:${word}`,
-          prompt: `Spell: ${word}`,
-          answer: word,
-          expiresAtFrame: selectedMode === 'Medium' ? scene.game.loop.frame + 30 * 60 : selectedMode === 'Hard' ? scene.game.loop.frame + 10 * 60 : null
-        }));
-
-      if (selectedMode === 'Medium' || selectedMode === 'Hard') {
-        questionAnswers
-          .filter(question => question.answer.length <= letterBottleCount)
-          .forEach(question => challengeOptions.push({
-            type: 'question',
-            key: `${selectedMode}:question:${question.answer}`,
-            prompt: `Question: ${question.prompt}`,
-            answer: question.answer,
-            expiresAtFrame: null
-          }));
-      }
-
-      let available = challengeOptions.filter(option => !usedChallengeKeys.has(option.key));
-      if (!available.length) {
-        usedChallengeKeys.clear();
-        available = challengeOptions;
-      }
-
-      const selected = Phaser.Utils.Array.GetRandom(available);
-      if (!selected) return;
-      usedChallengeKeys.add(selected.key);
+      const requirements = getLevelChallengeRequirements(scene, spellWords, questionAnswers);
+      const requiredLetterCount = requirements.reduce((total, requirement) => total + requirement.answer.length, 0);
+      const allBottles = ensureChallengeBottleCapacity(
+        scene,
+        bottlePickups.getChildren().filter(bottle => bottle.active),
+        requiredLetterCount
+      );
 
       challengeState = {
         complete: false,
-        requirements: [{
-          type: selected.type,
-          prompt: selected.prompt,
-          answer: selected.answer,
+        requirements: requirements.map(requirement => ({
+          type: requirement.type,
+          prompt: requirement.prompt,
+          answer: requirement.answer,
           progress: 0,
           timedOut: false,
-          expiresAtFrame: selected.expiresAtFrame,
-          displayedSeconds: selected.expiresAtFrame === null ? null : Math.max(1, Math.ceil((selected.expiresAtFrame - scene.game.loop.frame) / 60))
-        }]
+          expiresAtFrame: requirement.expiresAtFrame,
+          displayedSeconds: requirement.expiresAtFrame === null
+            ? null
+            : Math.max(1, Math.ceil((requirement.expiresAtFrame - gameFrame(scene)) / 60))
+        }))
       };
 
       const heartCount = selectedMode === 'Easy'
-        ? selected.answer.length
+        ? requiredLetterCount
         : selectedMode === 'Medium'
-          ? Math.max(1, Math.ceil(selected.answer.length / 2))
+          ? Math.max(1, Math.ceil(requiredLetterCount / 2))
           : 0;
       spawnChallengeHearts(scene, allBottles, heartCount);
 
-      const shuffledBottles = Phaser.Utils.Array.Shuffle(
-        allBottles.filter(bottle => bottle.x >= LETTER_MIN_X)
-      );
-      let bottleIndex = 0;
+      const orderedChallengeBottles = allBottles
+        .filter(bottle => bottle.x >= LETTER_MIN_X)
+        .sort((first, second) => first.x - second.x);
       challengeState.requirements.forEach(requirement => {
+        const shouldShuffleLetters = requirement.type === 'spell' || selectedMode !== 'Easy';
+        const challengeBottles = shouldShuffleLetters
+          ? Phaser.Utils.Array.Shuffle(orderedChallengeBottles.slice())
+          : orderedChallengeBottles;
+        let bottleIndex = 0;
         requirement.answer.split('').forEach((letter) => {
-          const bottle = shuffledBottles[bottleIndex++];
+          const bottle = challengeBottles[bottleIndex++];
           if (!bottle) return;
           bottle.challengeLetter = letter;
           bottle.challengeRequirement = requirement;
@@ -969,6 +1169,43 @@
       updateChallengeHud();
     }
 
+    function getLevelChallengeRequirements(scene, spellWords, questionAnswers) {
+      const sequenceIndex = levelNumber - 1;
+      const isSpell = sequenceIndex % 2 === 0;
+      const orderedSpells = spellWords.slice().sort((first, second) => first.length - second.length);
+      const orderedQuestions = questionAnswers
+        .slice()
+        .sort((first, second) => first.answer.length - second.answer.length);
+      const options = isSpell ? orderedSpells : orderedQuestions;
+      const occurrenceIndex = Math.floor(sequenceIndex / 2) % options.length;
+      const selected = options[occurrenceIndex];
+      const answer = isSpell ? selected : selected.answer;
+
+      return [{
+        type: isSpell ? 'spell' : 'question',
+        prompt: isSpell ? `Spell: ${selected}` : `Question: ${selected.prompt}`,
+        answer,
+        expiresAtFrame: isSpell
+          ? selectedMode === 'Medium'
+            ? gameFrame(scene) + 30 * 60
+            : selectedMode === 'Hard'
+              ? gameFrame(scene) + 10 * 60
+              : null
+          : null
+      }];
+    }
+
+    function ensureChallengeBottleCapacity(scene, bottles, requiredLetterCount) {
+      const challengeBottleCount = bottles.filter(bottle => bottle.x >= LETTER_MIN_X).length;
+      const missingBottleCount = Math.max(0, requiredLetterCount - challengeBottleCount);
+      const additionalBottles = Array.from({ length: missingBottleCount }, (_, index) => {
+        const progress = (index + 1) / (missingBottleCount + 1);
+        const x = Phaser.Math.Linear(LETTER_MIN_X + 40, LEVEL_WIDTH - 40, progress);
+        return createBottlePickup(scene, x, 430, 30);
+      });
+      return bottles.concat(additionalBottles);
+    }
+
     function updateChallengeHud() {
       if (!challengeState || !challengePromptElement || !challengeProgressElement) return;
       challengePromptElement.textContent = challengeState.requirements.map(requirement =>
@@ -979,7 +1216,7 @@
           index < requirement.progress ? letter : '_'
         ).join(' ');
         const timer = requirement.expiresAtFrame !== null && !requirement.timedOut
-          ? ` (${Math.max(0, Math.ceil((requirement.expiresAtFrame - activeScene.game.loop.frame) / 60))}s)`
+          ? ` (${Math.max(0, Math.ceil((requirement.expiresAtFrame - gameFrame(activeScene)) / 60))}s)`
           : '';
         return `${letters}${timer}`;
       }).join('   ·   ');
@@ -987,10 +1224,11 @@
 
     function getAdversaryTypes() {
       return [
-        { texture: 'goblin', label: 'BRUHPHIE', width: 59, height: 70, hp: 1, speed: 90 },
+        { characterId: 'baby', texture: 'baby_adversary', label: 'BABY', width: 64, height: 64, hp: 1, speed: 90 },
+        { characterId: 'bruhphie', texture: 'bruhphie_adversary', label: 'BRUHPHIE', width: 59, height: 70, hp: 1, speed: 90 },
         { texture: 'ttc', label: 'TTC MIKE', width: 76, height: 100, hp: 2, speed: 75 },
         { texture: 'sushi', label: 'GABELICIOUS ROLL', width: 102, height: 110, hp: 3, speed: 85 }
-      ];
+      ].filter(type => type.characterId !== selectedCharacter.id);
     }
 
     function createPlatformAdversary(scene, playerSprite, platform, floor, adversaryTypes) {
@@ -1155,7 +1393,7 @@
     }
 
     function createBottlePickup(scene, x, surfaceY, size) {
-      const bottle = bottlePickups.create(x, surfaceY - size / 2, 'bottle');
+      const bottle = bottlePickups.create(x, surfaceY - size / 2, getCharacterAssetKey('collectable'));
       bottle.setDisplaySize(size, size);
       bottle.refreshBody();
       bottle.setAngle(-15);
@@ -1199,9 +1437,7 @@
     }
 
     function playMenuAudio(scene, audioKey, loop = false) {
-      scene.sound.stopByKey('easy_mode_sfx');
-      scene.sound.stopByKey('medium_mode_sfx');
-      scene.sound.stopByKey('hard_mode_sfx');
+      stopModeSounds(scene);
 
       if (scene.sound.locked) {
         pendingMenuAudioKey = audioKey;
@@ -1315,12 +1551,12 @@
       let textureKey;
       if (isJumping) {
         // Mid-air logic, entered only after a jump input
-        textureKey = canDoubleJump ? 'baby_jump' : 'baby_flutter';
+        textureKey = `${selectedCharacter.id}_${canDoubleJump ? 'jump' : 'flutter'}`;
       } else if (isMoving) {
-        textureKey = 'baby_run';
+        textureKey = `${selectedCharacter.id}_run`;
       } else {
         // Stay on the static idle sprite until the player acts.
-        textureKey = 'baby_idle';
+        textureKey = `${selectedCharacter.id}_idle`;
       }
 
       // Avoid resetting the texture every frame; only switch when state changes.
@@ -1330,7 +1566,7 @@
     }
 
     function updateBottleRespawns(scene) {
-      const frame = scene.game.loop.frame;
+      const frame = gameFrame(scene);
       bottleRespawns = bottleRespawns.filter(entry => {
         if (frame < entry.respawnAtFrame) return true;
         const bottle = entry.bottle;
@@ -1345,7 +1581,7 @@
     }
 
     function updateTimedEffects(scene) {
-      const frame = scene.game.loop.frame;
+      const frame = gameFrame(scene);
       timedEffects = timedEffects.filter(effect => {
         if (frame < effect.expiresAtFrame) return true;
         effect.object.destroy();
@@ -1358,7 +1594,7 @@
       let changed = false;
       challengeState.requirements.forEach(requirement => {
         if (requirement.expiresAtFrame === null || requirement.timedOut) return;
-        const framesLeft = requirement.expiresAtFrame - scene.game.loop.frame;
+        const framesLeft = requirement.expiresAtFrame - gameFrame(scene);
         if (framesLeft <= 0) {
           requirement.timedOut = true;
           changed = true;
@@ -1429,7 +1665,7 @@
     }
 
     function knockBackPlayer(playerSprite, enemySprite, scene) {
-      const currentFrame = scene.game.loop.frame;
+      const currentFrame = gameFrame(scene);
       const canTakeDamage = !isDamageImmune(playerSprite, currentFrame) &&
         !isDamageImmune(enemySprite, currentFrame);
 
@@ -1466,12 +1702,17 @@
       });
     }
 
+    // Time-based "frames" (60/s) so timers and immunity don't stretch when the device runs slowly.
+    function gameFrame(scene) {
+      return Math.floor(scene.time.now / (1000 / 60));
+    }
+
     function isDamageImmune(sprite, frame) {
       return frame < (sprite.getData('damageImmuneUntilFrame') ?? -1);
     }
 
     function grantDamageImmunity(scene, ...sprites) {
-      const immunityEndFrame = scene.game.loop.frame + 120;
+      const immunityEndFrame = gameFrame(scene) + 120;
       sprites.forEach(sprite => sprite.setData('damageImmuneUntilFrame', immunityEndFrame));
     }
 
@@ -1481,9 +1722,7 @@
       document.getElementById('game-hud').hidden = true;
       document.getElementById('challenge-hud').hidden = true;
       backgroundMusic.stop();
-      scene.sound.stopByKey('easy_mode_sfx');
-      scene.sound.stopByKey('medium_mode_sfx');
-      scene.sound.stopByKey('hard_mode_sfx');
+      stopModeSounds(scene);
       scene.gameOverSound.play();
       scene.physics.world.pause();
     }
@@ -1503,27 +1742,20 @@
       selectedMode = mode;
       levelNumber = 1;
       score = 0;
-      usedChallengeKeys.clear();
       playerLives = lives;
       playerMaxLives = lives;
       highestScore = Number(localStorage.getItem('lilianHighScore') || 0);
-      updateLivesText();
       pendingMenuAudioKey = null;
       introSound.stop();
-      scene.sound.stopByKey('easy_mode_sfx');
-      scene.sound.stopByKey('medium_mode_sfx');
-      scene.sound.stopByKey('hard_mode_sfx');
-      initializeLevelChallenge(scene);
-      updateChallengeHud();
-      playBackgroundMusic(scene);
-      beginGameplay(scene);
+      stopModeSounds(scene);
+      scene.scene.restart({ startGame: true });
     }
 
     function updateLivesText() {
       livesIcons.forEach((heart, index) => {
         const inMode = index < playerMaxLives;
         heart.hidden = !inMode;
-        heart.src = index < playerLives ? 'assets/baby/hp.png' : 'assets/baby/hp_empty.png';
+        heart.src = index < playerLives ? 'assets/game/hp.png' : 'assets/game/hp_empty.png';
       });
     }
 
@@ -1549,7 +1781,7 @@
     }
 
     function stompEnemy(enemySprite, enemyHud, scene) {
-      const frame = scene.game.loop.frame;
+      const frame = gameFrame(scene);
       if (enemyHud.lastStompFrame === frame) return;
       enemyHud.lastStompFrame = frame;
       if (isDamageImmune(player, frame) || isDamageImmune(enemySprite, frame)) return;
@@ -1564,7 +1796,7 @@
 
     function damageEnemy(enemySprite, enemyHud, scene, ignoreImmunity = false) {
       const hp = enemySprite.getData('hp');
-      if (!enemySprite.active || hp <= 0 || (!ignoreImmunity && isDamageImmune(enemySprite, scene.game.loop.frame))) return false;
+      if (!enemySprite.active || hp <= 0 || (!ignoreImmunity && isDamageImmune(enemySprite, gameFrame(scene)))) return false;
       enemyHud.hp = Math.max(0, hp - 1);
       enemySprite.setData('hp', enemyHud.hp);
       addScore(1);
@@ -1616,13 +1848,13 @@
       bottle.wiggleTween?.stop();
       bottle.disableBody(true, true);
       if (bottle.challengeLabel) bottle.challengeLabel.setVisible(false);
-      bottleRespawns.push({ bottle, respawnAtFrame: scene.game.loop.frame + 120 });
+      bottleRespawns.push({ bottle, respawnAtFrame: gameFrame(scene) + 120 });
       const explosion = scene.add.image(playerSprite.x, playerSprite.y, 'explosion')
         .setDisplaySize(70, 70)
         .setDepth(12);
-      timedEffects.push({ object: explosion, expiresAtFrame: scene.game.loop.frame + 30 });
+      timedEffects.push({ object: explosion, expiresAtFrame: gameFrame(scene) + 30 });
 
-      const canTakeDamage = !isDamageImmune(playerSprite, scene.game.loop.frame);
+      const canTakeDamage = !isDamageImmune(playerSprite, gameFrame(scene));
       if (canTakeDamage) {
         grantDamageImmunity(scene, playerSprite);
         scene.babyHitSound.play();
@@ -1694,7 +1926,11 @@
     function throwPoop(scene) {
       projectileSound.play();
       const direction = player.flipX ? -1 : 1;
-      const projectile = poopProjectiles.create(player.x + direction * 22, player.y, 'projectile');
+      const projectile = poopProjectiles.create(
+        player.x + direction * 22,
+        player.y,
+        getCharacterAssetKey('projectile')
+      );
       projectile.projectileId = nextProjectileId++;
       projectile.hasHit = false;
       projectile.setDisplaySize(18, 18);
