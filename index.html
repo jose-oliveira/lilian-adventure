@@ -660,6 +660,7 @@
     let modeAudioUnlockListenerRegistered = false;
     let nextProjectileId = 1;
     let levelNumber = 1;
+    let totalLevels = Infinity;
     let score = 0;
     let highestScore = Number(localStorage.getItem('lilianHighScore') || 0);
     let activeScene = null;
@@ -923,9 +924,7 @@
       });
       document.getElementById('restart-button').addEventListener('click', () => location.reload());
       document.getElementById('next-level-button').addEventListener('click', () => {
-        if (!activeScene) return;
-        activeScene.sound.stopByKey('success_sfx');
-        activeScene.scene.restart({ nextLevel: true, levelNumber: levelNumber + 1 });
+        location.reload();
       });
       menuHandlersBound = true;
     }
@@ -1102,6 +1101,7 @@
         }
       };
       const { spellWords, questionAnswers } = modeWordSets[selectedMode] || modeWordSets.Easy;
+      totalLevels = spellWords.length + questionAnswers.length;
       const requirements = getLevelChallengeRequirements(scene, spellWords, questionAnswers);
       const requiredLetterCount = requirements.reduce((total, requirement) => total + requirement.answer.length, 0);
       const allBottles = ensureChallengeBottleCapacity(
@@ -1908,8 +1908,13 @@
       const remainingHp = levelAdversaries.reduce((sum, entry) =>
         sum + (entry.sprite.getData('hp') || 0), 0);
       addScore(remainingHp * 2);
-      document.getElementById('level-success-title').textContent = 'LEVEL COMPLETE!';
-      document.getElementById('level-success-message').textContent = `Level ${levelNumber} challenge complete!`;
+      if (levelNumber < totalLevels) {
+        scene.scene.restart({ nextLevel: true, levelNumber: levelNumber + 1 });
+        return;
+      }
+      document.getElementById('level-success-title').textContent = 'YOU WIN!';
+      document.getElementById('level-success-message').textContent = 'You completed every spell word and question!';
+      document.getElementById('next-level-button').textContent = 'Play Again';
       document.getElementById('level-success-score').textContent = `Score: ${score} · Best: ${highestScore}`;
       document.getElementById('level-success-menu').hidden = false;
       document.getElementById('game-hud').hidden = true;
