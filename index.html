@@ -429,7 +429,7 @@
       <div class="menu-content">
         <div class="game-over-copy">
           <p>You ran out of lives.</p>
-          <p>Choose a difficulty and try the adventure again.</p>
+          <p>Your best level and score are saved for this character and difficulty.</p>
           <button id="restart-button" class="restart-button">Return to level selection</button>
         </div>
         <div class="mode-preview game-over-preview">
@@ -490,6 +490,7 @@
         name: 'Baby',
         folder: 'assets/baby',
         portrait: 'assets/baby/portrait.png',
+        sizeMultiplier: 1,
         animations: {
           idle: 'idle.png?v=2',
           run: 'run.png',
@@ -502,6 +503,20 @@
         name: 'Bruhphie',
         folder: 'assets/goblin',
         portrait: 'assets/goblin/portrait.png',
+        sizeMultiplier: 1.25,
+        animations: {
+          idle: 'idle.png',
+          run: 'run.png',
+          jump: 'jump.png',
+          flutter: 'flutter.png'
+        }
+      },
+      {
+        id: 'ttc',
+        name: 'TTC',
+        folder: 'assets/ttc',
+        portrait: 'assets/ttc/portrait.png',
+        sizeMultiplier: 1.5,
         animations: {
           idle: 'idle.png',
           run: 'run.png',
@@ -750,34 +765,22 @@
       const floor = this.add.rectangle(LEVEL_WIDTH / 2, 440, LEVEL_WIDTH, 20, 0x1e3a8a);
       this.physics.add.existing(floor, true);
 
-      // Raised platforms are made from 30x30 blocks, including the starting platforms.
-      const coffeeTable = createBlockPlatform(this, 300, 330, 7);
-      const couch = createBlockPlatform(this, 600, 265, 8);
-
       // 3. Player Setup
       // Start position: 100x, 350y
       player = this.physics.add.sprite(100, 350, `${selectedCharacter.id}_idle`);
-
-      // Preserve the previous 64px height without distorting the higher-res art.
-      const idleFrame = this.textures.getFrame(`${selectedCharacter.id}_idle`);
-      const playerDisplayHeight = 64;
-      const playerDisplayWidth = playerDisplayHeight * idleFrame.width / idleFrame.height;
-      const playerScaleX = playerDisplayWidth / idleFrame.width;
-      const playerScaleY = playerDisplayHeight / idleFrame.height;
-      player.setDisplaySize(playerDisplayWidth, playerDisplayHeight);
+      applyPlayerAppearance(this, `${selectedCharacter.id}_idle`);
 
       player.setCollideWorldBounds(true);
-      // Keep the same on-screen collider (24x48) and feet alignment after scaling.
-      player.body.setSize(24 / playerScaleX, 48 / playerScaleY);
-      player.body.setOffset(6 / playerScaleX, 16 / playerScaleY);
-      player.body.updateFromGameObject();
+      // Raised platforms are made from 30x30 blocks, including the starting platforms.
+      const coffeeTableTop = 430 - player.displayHeight - 31;
+      const coffeeTable = createBlockPlatform(this, 300, coffeeTableTop, 7);
+      const couch = createBlockPlatform(this, 600, 265, 8);
+
       player.setCollideWorldBounds(true);
       this.cameras.main.startFollow(player, true, 0.12, 0.12);
 
       // 4. Collisions
       this.physics.add.collider(player, floor);
-      this.physics.add.collider(player, coffeeTable);
-      this.physics.add.collider(player, couch);
       player.setCollideWorldBounds(true);
       this.cameras.main.startFollow(player, true, 0.12, 0.12);
 
@@ -829,7 +832,11 @@
 
       const adversaryTypes = getAdversaryTypes();
       createPlatformAdversary(this, player, coffeeTable, floor, adversaryTypes);
+      addPlatformSideColliders(this, player, coffeeTable, floor);
+      this.physics.add.collider(player, coffeeTable);
       createPlatformAdversary(this, player, couch, floor, adversaryTypes);
+      addPlatformSideColliders(this, player, couch, floor);
+      this.physics.add.collider(player, couch);
       generateLevelPlatforms(this, player, floor, coffeeTable, couch, adversaryTypes);
 
       // 5. Controls Setup
@@ -922,7 +929,11 @@
         if (!chosenModeButton || !activeScene) return;
         startGame(chosenModeButton.dataset.mode, Number(chosenModeButton.dataset.lives), activeScene);
       });
-      document.getElementById('restart-button').addEventListener('click', () => location.reload());
+      document.getElementById('restart-button').addEventListener('click', () => {
+        document.getElementById('game-over-menu').hidden = true;
+        document.getElementById('start-menu').hidden = false;
+        updateStartButtonState();
+      });
       document.getElementById('next-level-button').addEventListener('click', () => {
         location.reload();
       });
@@ -933,9 +944,37 @@
       const startButton = document.getElementById('start-game-button');
       startButton.disabled = !chosenModeButton || !selectedCharacter;
       if (chosenModeButton) {
+        const progress = getSavedProgress(selectedCharacter, chosenModeButton.dataset.mode);
+        startButton.textContent = progress
+          ? `Resume Level ${progress.level} · Score ${progress.score}`
+          : 'Start Game';
         document.getElementById('mode-footer-description').textContent =
           `${selectedCharacter.name} · ${chosenModeButton.dataset.mode} difficulty · ${chosenModeButton.dataset.lives} lives`;
+      } else {
+        startButton.textContent = 'Start Game';
       }
+    }
+
+    function getSavedProgress(character, mode) {
+      const key = `lilianProgress_${character.id}_${mode.toLowerCase()}`;
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!saved || !Number.isInteger(saved.level) || saved.level < 1 ||
+        !Number.isFinite(saved.score) || saved.score < 0) {
+        return null;
+      }
+      return saved;
+    }
+
+    function saveGameProgress() {
+      if (!selectedMode || !selectedCharacter) return;
+      const key = `lilianProgress_${selectedCharacter.id}_${selectedMode.toLowerCase()}`;
+      const saved = getSavedProgress(selectedCharacter, selectedMode);
+      const progress = !saved || levelNumber > saved.level
+        ? { level: levelNumber, score }
+        : levelNumber === saved.level && score > saved.score
+          ? { level: levelNumber, score }
+          : saved;
+      localStorage.setItem(key, JSON.stringify(progress));
     }
 
     function getCharacterDifficultyImage(character, difficulty) {
@@ -950,6 +989,22 @@
 
     function getCharacterAssetKey(asset) {
       return `${selectedCharacter.id}_${asset}`;
+    }
+
+    function applyPlayerAppearance(scene, textureKey) {
+      if (player.texture.key !== textureKey) player.setTexture(textureKey);
+
+      const frame = scene.textures.getFrame(textureKey);
+      const sizeMultiplier = selectedCharacter.sizeMultiplier || 1;
+      const displayHeight = 64 * sizeMultiplier;
+      const displayWidth = displayHeight * frame.width / frame.height;
+      player.setDisplaySize(displayWidth, displayHeight);
+
+      const scaleX = displayWidth / frame.width;
+      const scaleY = displayHeight / frame.height;
+      player.body.setSize(24 * sizeMultiplier / scaleX, displayHeight / scaleY);
+      player.body.setOffset(6 * sizeMultiplier / scaleX, 0);
+      player.body.updateFromGameObject();
     }
 
     function updateOutcomeImages(character) {
@@ -1223,7 +1278,7 @@
       return [
         { characterId: 'baby', texture: 'baby_adversary', label: 'BABY', width: 64, height: 64, hp: 1, speed: 90 },
         { characterId: 'bruhphie', texture: 'bruhphie_adversary', label: 'BRUHPHIE', width: 59, height: 70, hp: 1, speed: 90 },
-        { texture: 'ttc', label: 'TTC MIKE', width: 76, height: 100, hp: 2, speed: 75 },
+        { characterId: 'ttc', texture: 'ttc', label: 'TTC MIKE', width: 76, height: 100, hp: 2, speed: 75 },
         { texture: 'sushi', label: 'GABELICIOUS ROLL', width: 102, height: 110, hp: 3, speed: 85 }
       ].filter(type => type.characterId !== selectedCharacter.id);
     }
@@ -1285,10 +1340,26 @@
       return record;
     }
 
+    function addPlatformSideColliders(scene, playerSprite, platform, floor) {
+      const clearance = floor.body.top - platform.body.bottom;
+      if (playerSprite.displayHeight <= clearance) return;
+
+      const wallWidth = 4;
+      const wallTop = platform.body.top;
+      const wallHeight = floor.body.top - wallTop;
+      [platform.body.left, platform.body.right].forEach(x => {
+        const wall = scene.add.rectangle(x, wallTop + wallHeight / 2, wallWidth, wallHeight, 0xffffff, 0);
+        scene.physics.add.existing(wall, true);
+        wall.body.setSize(wallWidth, wallHeight);
+        wall.body.updateFromGameObject();
+        scene.physics.add.collider(playerSprite, wall);
+      });
+    }
+
     function generateLevelPlatforms(scene, playerSprite, floor, coffeeTable, couch, adversaryTypes) {
 
       const floorTop = 430;
-      const minimumElevation = 125;
+      const minimumElevation = Math.max(125, playerSprite.displayHeight + 31);
       const maximumElevation = 195;
       const platformXs = [];
       let lastPlatformX = 600;
@@ -1311,10 +1382,11 @@
         const platformTop = floorTop - elevation;
         const platformBlockCount = Phaser.Math.Between(7, 10);
         const platform = createBlockPlatform(scene, platformX, platformTop, platformBlockCount);
-        scene.physics.add.collider(playerSprite, platform);
         generatedPlatforms.push(platform);
 
         createPlatformAdversary(scene, playerSprite, platform, floor, adversaryTypes);
+        addPlatformSideColliders(scene, playerSprite, platform, floor);
+        scene.physics.add.collider(playerSprite, platform);
 
         if (Math.random() < 0.6) {
           const groundX = Phaser.Math.Clamp(
@@ -1558,7 +1630,7 @@
 
       // Avoid resetting the texture every frame; only switch when state changes.
       if (player.texture.key !== textureKey) {
-        player.setTexture(textureKey);
+        applyPlayerAppearance(this, textureKey);
       }
     }
 
@@ -1715,6 +1787,7 @@
 
     function showGameOver(scene) {
       if (!document.getElementById('game-over-menu').hidden) return;
+      saveGameProgress();
       document.getElementById('game-over-menu').hidden = false;
       document.getElementById('game-hud').hidden = true;
       document.getElementById('challenge-hud').hidden = true;
@@ -1737,8 +1810,9 @@
 
     function startGame(mode, lives, scene) {
       selectedMode = mode;
-      levelNumber = 1;
-      score = 0;
+      const progress = getSavedProgress(selectedCharacter, mode);
+      levelNumber = progress?.level || 1;
+      score = progress?.score || 0;
       playerLives = lives;
       playerMaxLives = lives;
       highestScore = Number(localStorage.getItem('lilianHighScore') || 0);
